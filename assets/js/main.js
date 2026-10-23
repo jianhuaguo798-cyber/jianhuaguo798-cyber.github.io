@@ -184,7 +184,7 @@
   function setProgress(k) { target = Math.max(target, k); }
 
   var fontsReady = (document.fonts && document.fonts.load)
-    ? Promise.all(['800 100px Mont', '400 20px Mont', '300 20px Mont'].map(function (f) { return document.fonts.load(f); })).catch(function () {})
+    ? document.fonts.load('800 100px Mont').catch(function () {})
     : Promise.resolve();
 
   var started = false, introStart = 0;
