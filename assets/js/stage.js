@@ -9,15 +9,15 @@
   /* 两套构图：桌面按设计稿 2000×1125；手机竖屏 750×1500 重新编排 */
   var LAYOUTS = {
     desk: {
-      fw: 2000, fh: 1125, horizon: 915,
+      fw: 2000, fh: 1125, horizon: 915, water: 1000,
       ring: { x: 1440, y: 465, r: 368 },
       portrait: { x: 763, y: 76, w: 928 },
       glass: { x0: 1068, x1: 1580, full: 720 },
       prisms: [
-        { dx0: 780, dx1: 925, top: 670, base: 1000, D: 10.4, rot: 0.42 },
-        { dx0: 950, dx1: 1030, top: 790, base: 1002, D: 10.9, rot: 0.34 },
-        { dx0: 1415, dx1: 1595, top: 655, base: 1004, D: 9.9, rot: -0.20 },
-        { dx0: 1730, dx1: 1782, top: 820, base: 1006, D: 10.6, rot: -0.32 }
+        { dx0: 780, dx1: 925, top: 670, base: 1000, D: 11.7, rot: 0.40 },
+        { dx0: 950, dx1: 1030, top: 790, base: 1002, D: 12.1, rot: 0.30 },
+        { dx0: 1415, dx1: 1595, top: 655, base: 1004, D: 11.5, rot: -0.24 },
+        null
       ],
       bubbles: [{ dx: 1652, dy: 553, r: 72, D: 10.5 }, { dx: 46, dy: 1112, r: 238, D: 6.0 }],
       lav: { cx: 1750, bottom: 1068, size: 340 },
@@ -29,14 +29,14 @@
       ] }
     },
     mob: {
-      fw: 750, fh: 1500, horizon: 1200,
-      ring: { x: 580, y: 670, r: 294 },
-      portrait: { x: 40, y: 360, w: 740 },
-      glass: { x0: 283, x1: 691, full: 20 },
+      fw: 750, fh: 1500, horizon: 1200, water: 1240,
+      ring: { x: 580, y: 690, r: 294 },
+      portrait: { x: 0, y: 420, w: 800 },
+      glass: { x0: 263, x1: 712, full: 10 },
       prisms: [
-        { dx0: 30, dx1: 118, top: 1010, base: 1240, D: 10.4, rot: 0.42 },
-        { dx0: 128, dx1: 176, top: 1090, base: 1242, D: 10.9, rot: 0.34 },
-        { dx0: 520, dx1: 628, top: 1000, base: 1244, D: 9.9, rot: -0.20 },
+        { dx0: 30, dx1: 118, top: 1010, base: 1240, D: 11.7, rot: 0.40 },
+        { dx0: 128, dx1: 176, top: 1090, base: 1242, D: 12.1, rot: 0.30 },
+        { dx0: 520, dx1: 628, top: 1000, base: 1244, D: 11.5, rot: -0.24 },
         null
       ],
       bubbles: [{ dx: 664, dy: 930, r: 48, D: 10.5 }, { dx: 14, dy: 1470, r: 160, D: 6.0 }],
@@ -109,6 +109,7 @@
     this.bubbles = [];
     this.fly = { mode: 'intro', t0: 0, path: null, x: 0, y: 0, dir: 1, flap: 0.3, burstAt: 4, lastPos: null };
     this.perf = { acc: 0, n: 0, steps: 0 };
+    this.viewProj = new THREE.Matrix4();
   }
 
   /* ---------- 资源 ---------- */
@@ -141,6 +142,7 @@
 
     // 渲染目标
     var rtOpt = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false };
+    this.rtA = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, this.gl2 ? { samples: 4 } : {}));
     this.rtScene = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, this.gl2 ? { samples: 4 } : {}));
     this.rtReed = new THREE.WebGLRenderTarget(4, 4, rtOpt);
     this.rtFg = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, { depthBuffer: true }, this.gl2 ? { samples: 4 } : {}));
@@ -177,25 +179,30 @@
 
     this.glassU = function (extra) {
       var u = {
-        tScene: { value: null }, uRes: { value: new THREE.Vector2() }, uBgRect: { value: new THREE.Vector4(0, 0, 1, 1) }, uBgMap: { value: 0 },
-        uLight: { value: new THREE.Vector3(0, 2, 2) }, uTime: { value: 0 }, uRefr: { value: 0.03 }, uDisp: { value: 0.12 },
-        uIri: { value: 0.3 }, uOpacity: { value: 1 }, uKind: { value: 0 }, uEdge: { value: 0.02 }, uRim: { value: 1 }, uRefl: { value: 0 }, uWaterY: { value: -999 }, uBack: { value: 0 },
-        uSize: { value: new THREE.Vector3(1, 1, 1) }, uTint: { value: new THREE.Vector3(1, 1, 1) }
+        tScene: { value: null }, tEnv: { value: tx.bg }, uBgRect: { value: new THREE.Vector4(0, 0, 1, 1) }, uBgMap: { value: 0 },
+        uModel: { value: new THREE.Matrix4() }, uInvModel: { value: new THREE.Matrix4() }, uViewProj: { value: self.viewProj },
+        uLight: { value: new THREE.Vector3(0, 2, 2) }, uTime: { value: 0 }, uOpacity: { value: 1 }, uKind: { value: 0 },
+        uIri: { value: 0.3 }, uRefl: { value: 0 }, uWaterY: { value: -999 }, uBehind: { value: 2 }, uAbsorb: { value: 0.5 },
+        uTube: { value: 0.03 }, uBevel: { value: 0.02 }, uEps: { value: 0.0015 }, uTMax: { value: 3 }, uObjScale: { value: 1 }, uWave: { value: 1 },
+        uSize: { value: new THREE.Vector3(1, 1, 1) }, uTint: { value: new THREE.Vector3(1, 1, 1) },
+        uAbsorbCol: { value: new THREE.Vector3(0.10, 0.16, 0.03) }
       };
       for (var k in extra) u[k].value = extra[k];
       return u;
     };
 
+    this.ringTube = 0.03;
     this.mRing = mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, blend: CUSTOM_KEEPA, uniforms: this.glassU({
-      tScene: tx.bg, uBgMap: 1, uKind: 0, uRefr: 0.026, uDisp: 0.45, uIri: 0.9, uRim: 1.35, uTint: new THREE.Vector3(1.02, 1.0, 1.05)
+      tScene: tx.bg, uBgMap: 1, uKind: 0, uIri: 0.35, uBehind: 40, uAbsorb: 0, uTube: this.ringTube, uEps: 0.0008, uTMax: 2.4,
+      uTint: new THREE.Vector3(1.0, 1.0, 1.02)
     }) });
-    this.ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.036, 48, 280), this.mRing);
+    this.ring = new THREE.Mesh(new THREE.TorusGeometry(1, this.ringTube * 1.7, 32, 320), this.mRing);
     this.ring.renderOrder = 1;
     this.sMain.add(this.ring);
 
     this.mPortrait = mat({ fs: SH.FS_PORTRAIT, blend: CUSTOM_COVER, uniforms: {
       tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.75 },
-      uOpacity: { value: 0 }, uTime: { value: 0 }, uTint: { value: new THREE.Vector3(0.90, 0.88, 0.99) }
+      uOpacity: { value: 0 }, uTime: { value: 0 }, uTint: { value: new THREE.Vector3(0.90, 0.88, 0.99) }, uWaterV: { value: 0.12 }
     } });
     this.portrait = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.mPortrait);
     this.portrait.renderOrder = 2;
@@ -204,8 +211,9 @@
     // —— reed：竖纹玻璃 + 标题
     this.mReed = mat({ vs: SH.VS_QUAD, fs: SH.FS_REED, noBlend: true, transparent: false, uniforms: {
       tScene: { value: this.rtScene.texture }, tField: { value: null }, uRes: { value: new THREE.Vector2() },
-      uGlass: { value: new THREE.Vector4(0.5, 0.75, 22, 2.2) }, uTime: { value: 0 }, uChroma: { value: 0.35 },
-      uFieldOn: { value: this.fieldOn }, uFrost: { value: 0.05 }, uLight: { value: new THREE.Vector2(0.5, 0.5) }, uPanelA: { value: 1 }
+      uGlass: { value: new THREE.Vector4(0.5, 0.75, 22, 1) }, uTime: { value: 0 }, uChroma: { value: 1 },
+      uFieldOn: { value: this.fieldOn }, uFrost: { value: 0 }, uLight: { value: new THREE.Vector3(0, 0, 400) }, uPanelA: { value: 1 },
+      uDistP: { value: 30 }, uDistS: { value: 120 }
     } });
     this.sReed = quadScene(this.mReed);
     this.sTitle = new THREE.Scene();
@@ -216,34 +224,32 @@
     this.sCopy = quadScene(this.mCopy);
     this.sFg = new THREE.Scene();
 
-    // 棱柱：立在水面（底边 y≈1000），带倒影
+    // 棱柱：在竖纹玻璃后面、人像前面；立在水里，带倒影
+    this.mCopyA = mat({ vs: SH.VS_QUAD, fs: SH.FS_COPYA, noBlend: true, transparent: false, uniforms: { tSrc: { value: this.rtA.texture } } });
+    this.sCopyA = quadScene(this.mCopyA);
+    this.sPrism = new THREE.Scene();
     this.prisms = [0, 1, 2, 3].map(function (i) {
       var p = { delay: i * 0.13 };
-      function gm(refl, back) {
-        var m = mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, transparent: true, depthTest: !refl && !back, depthWrite: !refl && !back,
-          side: back ? THREE.BackSide : THREE.FrontSide, uniforms: self.glassU({
-          tScene: self.rtReed.texture, uKind: 2, uRefr: 0.03, uDisp: 0.3, uIri: 0.3, uRim: 1.0, uRefl: refl ? 1 : 0, uBack: back ? 1 : 0,
-          uTint: new THREE.Vector3(1.0, 0.99, 1.04)
+      function gm(refl) {
+        return mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, blend: CUSTOM_KEEPA, uniforms: self.glassU({
+          tScene: self.rtA.texture, uKind: 2, uIri: 0.22, uRefl: refl ? 1 : 0, uBehind: 1.6, uAbsorb: 0.9,
+          uTint: new THREE.Vector3(1.0, 0.99, 1.03)
         }) });
-        return m;
       }
-      p.mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), gm(false, false));
+      p.mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), gm(false));
       p.mesh.renderOrder = 12 + i;
-      p.back = new THREE.Mesh(p.mesh.geometry, gm(false, true));
-      p.back.renderOrder = 8 + i;
-      p.refl = new THREE.Mesh(p.mesh.geometry, gm(true, false));
+      p.refl = new THREE.Mesh(p.mesh.geometry, gm(true));
       p.refl.renderOrder = 4 + i;
-      self.sFg.add(p.refl);
-      self.sFg.add(p.back);
-      self.sFg.add(p.mesh);
+      self.sPrism.add(p.refl);
+      self.sPrism.add(p.mesh);
       return p;
     });
 
-    var sphere = new THREE.SphereGeometry(1, 72, 48);
+    var sphere = new THREE.SphereGeometry(1.03, 72, 48);
     this.bubbleGeo = sphere;
     this.mainBubbles = [{ ph: 0.3, delay: 2.05 }, { ph: 1.7, delay: 1.75 }].map(function (b, i) {
       b.mesh = new THREE.Mesh(sphere, mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, transparent: true, depthTest: true, depthWrite: true, uniforms: self.glassU({
-        tScene: self.rtReed.texture, uKind: 1, uRefr: 0.05, uDisp: 0.16, uIri: i === 1 ? 0.38 : 0.62, uRim: 1.0, uTint: new THREE.Vector3(1.02, 1.01, 1.05)
+        tScene: self.rtReed.texture, uKind: 1, uIri: i === 1 ? 0.22 : 0.32, uAbsorb: 0.5, uTint: new THREE.Vector3(1.01, 1.0, 1.03)
       }) }));
       b.mesh.renderOrder = 20 + i;
       self.sFg.add(b.mesh);
@@ -252,7 +258,7 @@
     // 漂浮小气泡池
     for (var i = 0; i < 7; i++) {
       var bm = new THREE.Mesh(sphere, mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, transparent: true, depthTest: true, depthWrite: false, uniforms: self.glassU({
-        tScene: self.rtReed.texture, uKind: 1, uRefr: 0.02, uDisp: 0.2, uIri: 0.7, uRim: 1.0, uTint: new THREE.Vector3(1.02, 1.01, 1.05)
+        tScene: self.rtReed.texture, uKind: 1, uIri: 0.45, uAbsorb: 0.3, uTint: new THREE.Vector3(1.01, 1.0, 1.03)
       }) }));
       bm.visible = false; bm.renderOrder = 30 + i;
       this.sFg.add(bm);
@@ -262,17 +268,25 @@
 
     this.mLav = mat({ vs: SH.VS_LAV, fs: SH.FS_SPRITE, uniforms: {
       tColor: { value: tx.lav }, tMask: { value: tx.lavMask }, uKeyR: { value: 0.008 }, uSkin: { value: 0 },
-      uOpacity: { value: 0 }, uTime: { value: 0 }, uShine: { value: 1 }, uGrow: { value: 0 },
+      uOpacity: { value: 0 }, uTime: { value: 0 }, uShine: { value: 1 }, uGrow: { value: 0 }, uRefl: { value: 0 },
       uSize: { value: new THREE.Vector2(1, 1) }, uPush: { value: new THREE.Vector2() }
     } });
     this.lav = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 30, 30), this.mLav);
     this.lav.renderOrder = 40;
     this.sFg.add(this.lav);
+    this.mLavR = mat({ vs: SH.VS_LAV, fs: SH.FS_SPRITE, uniforms: {
+      tColor: { value: tx.lav }, tMask: { value: tx.lavMask }, uKeyR: { value: 0.008 }, uSkin: { value: 0 },
+      uOpacity: { value: 0 }, uTime: { value: 0 }, uShine: { value: 0 }, uGrow: { value: 0 }, uRefl: { value: 1 },
+      uSize: { value: new THREE.Vector2(1, 1) }, uPush: { value: new THREE.Vector2() }
+    } });
+    this.lavR = new THREE.Mesh(this.lav.geometry, this.mLavR);
+    this.lavR.renderOrder = 39;
+    this.sFg.add(this.lavR);
 
     var fa = 1313 / 1198;
     this.mFly = mat({ vs: SH.VS_FLY, fs: SH.FS_SPRITE, side: THREE.DoubleSide, uniforms: {
       tColor: { value: tx.fly }, tMask: { value: tx.flyMask }, uKeyR: { value: 0.008 }, uSkin: { value: 0 },
-      uOpacity: { value: 0 }, uTime: { value: 0 }, uShine: { value: 1.6 }, uFlap: { value: 0.3 },
+      uOpacity: { value: 0 }, uTime: { value: 0 }, uShine: { value: 1.6 }, uFlap: { value: 0.3 }, uRefl: { value: 0 },
       uSize: { value: new THREE.Vector2(fa, 1) },
       uAxA: { value: new THREE.Vector2(505 / 1313, 1 - 752 / 1198) }, uAxB: { value: new THREE.Vector2(735 / 1313, 1 - 1095 / 1198) }
     } });
@@ -423,17 +437,14 @@
     this.renderer.setSize(rw, rh, false);
     this.cam.aspect = W / H; this.cam.updateProjectionMatrix();
     if (!this.ready) return;
-    this.rtScene.setSize(rw, rh); this.rtReed.setSize(rw, rh); this.rtFg.setSize(rw, rh);
+    this.rtA.setSize(rw, rh); this.rtScene.setSize(rw, rh); this.rtReed.setSize(rw, rh); this.rtFg.setSize(rw, rh);
     var bw = Math.max(2, rw >> 2), bh = Math.max(2, rh >> 2);
     this.rtBloomA.setSize(bw, bh); this.rtBloomB.setSize(bw, bh);
     var fw = Math.max(2, Math.round(W / 4)), fh = Math.max(2, Math.round(H / 4));
     this.rtFieldA.setSize(fw, fh); this.rtFieldB.setSize(fw, fh);
     this.mField.uniforms.uSize.value.set(fw, fh);
     var res = new THREE.Vector2(rw, rh);
-    [this.mBg, this.mReed, this.mPost, this.mRing].forEach(function (m) { m.uniforms.uRes.value.copy(res); });
-    this.prisms.forEach(function (p) { p.mesh.material.uniforms.uRes.value.copy(res); });
-    this.mainBubbles.forEach(function (b) { b.mesh.material.uniforms.uRes.value.copy(res); });
-    this.bubbles.forEach(function (b) { b.mesh.material.uniforms.uRes.value.copy(res); });
+    [this.mBg, this.mReed, this.mPost].forEach(function (m) { m.uniforms.uRes.value.copy(res); });
     this.letters.forEach(function (l) { l.mesh.material.uniforms.uRes.value.copy(res); });
     this.LY = LAYOUTS[L.mode] || LAYOUTS.desk;
     this.mPost.uniforms.uFrame.value.set(L.ox * this.dpr, L.oy * this.dpr, this.LY.fw * L.u * this.dpr, this.LY.fh * L.u * this.dpr);
@@ -472,17 +483,18 @@
     this.bg.scale.set(this.wLenPx(2000 * sc, D), this.wLenPx(1126 * sc, D), 1);
 
     // 圆环
-    this.ringD = 14;
+    this.ringD = 15;
     this.wAt(LY.ring.x, LY.ring.y, this.ringD, this.ring.position);
     this.ringR = this.wLen(LY.ring.r, this.ringD);
     this.ring.scale.setScalar(this.ringR);
     this.ringBase = this.ring.position.clone();
 
     // 人像
-    var pD = 12, pw = LY.portrait.w, ph = pw * 1339 / 1175;
+    var pD = 13, pw = LY.portrait.w, ph = pw * 1339 / 1175;
     this.wAt(LY.portrait.x + pw / 2, LY.portrait.y + ph / 2, pD, this.portrait.position);
     this.portrait.scale.set(this.wLen(pw, pD), this.wLen(ph, pD), 1);
     this.portraitBase = this.portrait.position.clone();
+    this.waterYp = this.wAt(0, LY.water, pD).y;          // 人像所在深度处的水面高度
 
     // 竖纹玻璃（虚拟面板深度 11）
     this.glassD = 11;
@@ -494,25 +506,27 @@
     this.prisms.forEach(function (p, i) {
       var cfg = LY.prisms[i];
       p.off = !cfg;
-      if (!cfg) { p.mesh.visible = p.refl.visible = p.back.visible = false; return; }
+      if (!cfg) { p.mesh.visible = p.refl.visible = false; return; }
       for (var k in cfg) p[k] = cfg[k];
       var w = self.wLen(p.dx1 - p.dx0, p.D);
       var h = self.wLen(p.base - p.top, p.D);
-      var d = w * 0.62;
+      var d = w * 0.8;
       p.mesh.geometry.dispose();
       p.mesh.geometry = new THREE.BoxGeometry(w, h, d);
-      p.refl.geometry = p.mesh.geometry; p.back.geometry = p.mesh.geometry;
+      p.refl.geometry = p.mesh.geometry;
       var c = self.wAt((p.dx0 + p.dx1) / 2, (p.top + p.base) / 2, p.D);
       p.c = c; p.h = h;
       p.waterY = self.wAt(0, p.base, p.D).y;
       p.mesh.position.copy(c);
       p.mesh.rotation.set(0.0, p.rot, 0);
       p.refl.rotation.set(0.0, p.rot, 0);
-      p.back.rotation.set(0.0, p.rot, 0);
-      [p.mesh, p.refl, p.back].forEach(function (m) {
+      var md = Math.min(w, d);
+      [p.mesh, p.refl].forEach(function (m) {
         var u = m.material.uniforms;
         u.uSize.value.set(w / 2, h / 2, d / 2);
-        u.uEdge.value = Math.min(w, d) * 0.06;
+        u.uBevel.value = md * 0.07;
+        u.uEps.value = md * 0.002;
+        u.uTMax.value = 3 * Math.hypot(w, h, d);
       });
     });
     this.mainBubbles.forEach(function (b, i) {
@@ -528,6 +542,8 @@
     this.wAt(LY.lav.cx, LY.lav.bottom - ls / 2, lavD, this.lav.position);
     this.lav.scale.set(this.wLen(ls, lavD), this.wLen(ls, lavD), 1);
     this.lavBase = this.lav.position.clone();
+    this.lavR.scale.set(this.lav.scale.x, -this.lav.scale.y, 1);
+    this.lavR.position.set(this.lav.position.x, this.lav.position.y - this.lav.scale.y, this.lav.position.z);
 
     // 蝴蝶停在右侧花穗顶端
     this.flyD = 9;
@@ -544,7 +560,7 @@
 
     // 标题字母
     this.letters.forEach(function (l) {
-      var tD = 13;
+      var tD = 12.6;
       l.D = tD;
       l.base = self.wAt(l.dx + l.dw / 2, l.dy + l.dh / 2, tD);
       l.mesh.scale.set(self.wLen(l.dw, tD), self.wLen(l.dh, tD), 1);
@@ -588,6 +604,8 @@
     var cx = bx + sm.mx * 0.30 * parA, cy = by - sm.my * 0.17 * parA;
     this.cam.position.set(cx, cy, bz);
     this.cam.lookAt(bx, by, bz - 12);
+    this.cam.updateMatrixWorld();
+    this.viewProj.multiplyMatrices(this.cam.projectionMatrix, this.cam.matrixWorldInverse);
 
     var burst = Math.exp(-Math.pow((p - CROSS) / 0.03, 2)) * 0.32;
     var bright = smooth(seg(p, CROSS, 0.95)) * 0.32;
@@ -633,6 +651,8 @@
     var ru = this.mRing.uniforms;
     ru.uBgRect.value.set(rx0, ry0, rx1 - rx0, ry1 - ry0);
     ru.uTime.value = t; ru.uLight.value.copy(light); ru.uOpacity.value = smooth(ringIn);
+    ru.uObjScale.value = rr.scale.x;
+    this.syncGlass(rr);
 
     // —— 人像
     var pu = this.mPortrait.uniforms;
@@ -642,6 +662,7 @@
     var breathe = Math.sin(t * 0.9) * 0.004;
     this.portrait.position.copy(this.portraitBase);
     this.portrait.position.y += this.portrait.scale.y * (breathe - (1 - oCubic(seg(T, 0.95, 2.6))) * 0.035);
+    pu.uWaterV.value = (this.waterYp - (this.portrait.position.y - this.portrait.scale.y / 2)) / this.portrait.scale.y;
 
     // —— 竖纹玻璃
     var gx0w = lerp(this.glassX0, this.glassXFull, smooth(seg(p, 0.04, 0.26)));
@@ -650,13 +671,16 @@
     var gu = this.mReed.uniforms;
     var focus = 1 - oCubic(seg(T, 1.0, 3.1));
     var shatter = smooth(seg(p, 0.04, 0.30));
-    var strength = 1.35 + focus * 6.5 + shatter * 7.0;
+    var bulge = 0.72 + focus * 1.6 + shatter * 1.5;
     var ribPx = 38 * this.L.u * dpr * (1 + shatter * 0.5);
-    gu.uGlass.value.set(g0.x * 0.5 + 0.5, g1.x * 0.5 + 0.5, ribPx, strength);
+    var ud = this.L.u * dpr;
+    gu.uGlass.value.set(g0.x * 0.5 + 0.5, g1.x * 0.5 + 0.5, ribPx, bulge);
     gu.uPanelA.value = 1 - smooth(seg(p, 0.34, 0.48));
-    gu.uTime.value = t; gu.uChroma.value = 0.42 + focus * 0.8 + shatter * 0.6;
-    gu.uLight.value.set(sm.lx, 1 - sm.ly);
-    gu.uFrost.value = 0.05 + focus * 0.12;
+    gu.uDistP.value = 22 * ud * (1 + focus * 3.5 + shatter * 3);
+    gu.uDistS.value = 125 * ud * (1 + focus * 1.5 + shatter * 1.5);
+    gu.uTime.value = t; gu.uChroma.value = 1.0 + focus * 1.4 + shatter * 1.0;
+    gu.uLight.value.set(sm.lx * this.rw, (1 - sm.ly) * this.rh, 0.32 * this.rh);
+    gu.uFrost.value = focus * 0.10;
 
     // —— 标题
     var split = g0.x * 0.5 + 0.5;
@@ -703,13 +727,13 @@
       pr.refl.position.copy(pr.c);
       pr.refl.position.y = 2 * pr.waterY - (pr.c.y - sink);
       pr.refl.scale.set(1, -1, 1);
-      pr.back.position.copy(pr.mesh.position);
       var op = smooth(seg(T, 1.55 + pr.delay, 2.1 + pr.delay));
-      [pr.mesh, pr.refl, pr.back].forEach(function (m) {
+      [pr.mesh, pr.refl].forEach(function (m) {
         var u = m.material.uniforms;
         u.uTime.value = t; u.uLight.value.copy(light); u.uOpacity.value = op;
         u.uWaterY.value = pr.waterY;
         m.visible = op > 0.001;
+        self.syncGlass(m);
       });
     });
 
@@ -726,8 +750,9 @@
       b.mesh.scale.setScalar(Math.max(0.0001, b.R * k));
       var u = b.mesh.material.uniforms;
       u.uTime.value = t; u.uLight.value.copy(light);
-      u.uRefr.value = projR(b.mesh.position, b.R) * 1.0;
+      u.uBehind.value = b.R * 6.0; u.uObjScale.value = b.mesh.scale.x;
       u.uOpacity.value = smooth(seg(T, b.delay, b.delay + 0.4));
+      self.syncGlass(b.mesh);
     });
 
     // —— 漂浮小气泡
@@ -741,6 +766,8 @@
     var lnear = S.inside ? Math.exp(-(ldx * ldx * 18 + ldy * ldy * 10)) : 0;
     sm.push = damp(sm.push || 0, clamp(S.mvx / W * 0.04, -0.06, 0.06) * lnear, 3.5, dt);
     lu.uPush.value.set(sm.push, 0);
+    var lr = this.mLavR.uniforms;
+    lr.uTime.value = t; lr.uGrow.value = lu.uGrow.value; lr.uOpacity.value = lu.uOpacity.value; lr.uPush.value.copy(lu.uPush.value);
 
     // —— 蝴蝶
     this.tickFly(S, light);
@@ -788,6 +815,13 @@
     }
   };
 
+  Stage.prototype.syncGlass = function (m) {
+    m.updateMatrixWorld();
+    var u = m.material.uniforms;
+    u.uModel.value.copy(m.matrixWorld);
+    u.uInvModel.value.copy(m.matrixWorld).invert();
+  };
+
   Stage.prototype.tickBubbles = function (t, dt, light, projR) {
     var self = this;
     if (t > this.nextBubble) {
@@ -795,7 +829,7 @@
       if (b) {
         var r = hash(t * 3.1);
         b.alive = true; b.born = t; b.life = 7 + hash(t * 1.7) * 5; b.pop = -1;
-        b.D = 9.5 + hash(t * 5.3) * 3.5;
+        b.D = 8.6 + hash(t * 5.3) * 1.8;
         var sp = self.LY.spawn;
         b.dx = sp[0] + r * (sp[1] - sp[0]); b.dy = self.LY.horizon + 10;
         b.r = 9 + hash(t * 7.7) * 20;
@@ -819,7 +853,8 @@
       b.mesh.visible = true;
       var u = b.mesh.material.uniforms;
       u.uTime.value = t; u.uLight.value.copy(light);
-      u.uRefr.value = projR(pos, R) * 1.5;
+      u.uBehind.value = R * 6.0; u.uObjScale.value = R;
+      self.syncGlass(b.mesh);
       u.uOpacity.value = smooth(seg(age, 0, 0.6)) * (1 - popK) * (1 - smooth(seg(k, 0.85, 1.0)) * 0.3);
       b.screen = pos.clone().project(self.cam);
     });
@@ -924,8 +959,11 @@
       this.mBg.uniforms.tField.value = this.rtFieldA.texture;
       this.mReed.uniforms.tField.value = this.rtFieldA.texture;
     }
-    r.setRenderTarget(this.rtScene); r.setClearColor(0xe4e6f8, 0); r.clear(true, false, false);
+    r.setRenderTarget(this.rtA); r.setClearColor(0xe4e6f8, 0); r.clear(true, false, false);
     r.render(this.sMain, this.cam);
+    r.setRenderTarget(this.rtScene); r.clear(true, false, false);
+    r.render(this.sCopyA, this.ortho);
+    r.render(this.sPrism, this.cam);
 
     r.setRenderTarget(this.rtReed); r.clear(true, false, false);
     r.render(this.sReed, this.ortho);
