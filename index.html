@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PORTFOLIO 2026 · 郭建华 UI/UX 设计作品集</title>
+<meta name="description" content="郭建华的 UI/UX 设计作品集：复杂的事简单化，简单的事标准化，标准的事流程化，流程的事自动化。">
+<meta name="theme-color" content="#dfe3f7">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PORTFOLIO 2026 · 郭建华 UI/UX 设计作品集">
+<meta property="og:description" content="复杂的事简单化，简单的事标准化，标准的事流程化，流程的事自动化。">
+<meta property="og:url" content="https://jianhuaguo798-cyber.github.io/">
+<meta property="og:image" content="https://jianhuaguo798-cyber.github.io/assets/img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="assets/fonts/montserrat-800.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="is-loading">
+
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<!-- 加载层 -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader__grid"><i></i><i></i><i></i></div>
+  <div class="loader__row">
+    <span class="loader__name">GUO JIANHUA</span>
+    <span class="loader__num" id="loaderNum">0</span>
+  </div>
+  <div class="loader__bar"><b id="loaderBar"></b></div>
+</div>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="hero__stick">
+      <div class="frame" id="frame">
+        <h1 class="sr-only">PORTFOLIO 2026 · 郭建华 UI/UX 设计作品集</h1>
+
+        <!-- 网格细线 -->
+        <i class="ln ln--v ln--v1"></i>
+        <i class="ln ln--v ln--v2a"></i>
+        <i class="ln ln--v ln--v2b"></i>
+        <i class="ln ln--h ln--h1"></i>
+        <i class="ln ln--h ln--h2"></i>
+
+        <p class="tag tag--tl" data-type>PEOPLE IDEAS CULTURE TECHNOLOGY A<br>BRIGHTER TOMORROW</p>
+        <p class="tag tag--tr" data-type>UI/UX DESIGN PORTFOLIO</p>
+
+        <!-- 标题由 WebGL 绘制；这里是交互热区 -->
+        <div class="title-hit" id="titleHit" aria-hidden="true"></div>
+
+        <div class="pill" id="pill">
+          <span class="pill__year">2026</span>
+          <span class="pill__txt">UI 设计作品集</span>
+        </div>
+
+        <ul class="motto" id="motto">
+          <li><span>复杂的事</span><b>简单化</b></li>
+          <li><span>简单的事</span><b>标准化</b></li>
+          <li><span>标准的事</span><b>流程化</b></li>
+          <li><span>流程的事</span><b>自动化</b></li>
+        </ul>
+
+        <p class="tag tag--br" data-type>体验设计 / 视觉探索</p>
+      </div>
+
+      <div class="cue" id="cue" aria-hidden="true"><span>SCROLL</span><i></i></div>
+    </div>
+  </section>
+
+  <section class="works" id="works">
+    <div class="works__in">
+      <p class="eyebrow">SELECTED WORKS — 02</p>
+      <h2 class="works__h">精选作品</h2>
+      <p class="works__p">作品正在整理中，完整作品集即将上线。</p>
+      <div class="cards">
+        <article class="card"><span class="card__no">01</span><span class="card__t">Coming soon</span></article>
+        <article class="card"><span class="card__no">02</span><span class="card__t">Coming soon</span></article>
+        <article class="card"><span class="card__no">03</span><span class="card__t">Coming soon</span></article>
+      </div>
+    </div>
+    <footer class="foot"><span>© 2026 GUO JIANHUA</span><span>UI/UX DESIGN PORTFOLIO</span></footer>
+  </section>
+</main>
+
+<div class="cursor-dot" id="cursorDot" aria-hidden="true"></div>
+
+<script src="assets/js/vendor/three.min.js"></script>
+<script src="assets/js/vendor/lenis.min.js"></script>
+<script src="assets/js/shaders.js"></script>
+<script src="assets/js/stage.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
