@@ -171,7 +171,9 @@
 
   /* ---------- 舞台 ---------- */
   var stage = null;
-  try {
+  // 双击本地文件打开时浏览器禁止 WebGL 读本地图片 → 直接用静态设计稿兜底（线上 / 本地服务器不受影响）
+  if (location.protocol === 'file:') { body.classList.add('no-gl'); console.warn('请用 python3 tools/serve.py 预览，file:// 下 WebGL 贴图会被浏览器拦截'); }
+  else try {
     var weak = L.mode === 'mob' || (navigator.hardwareConcurrency || 8) <= 4;
     stage = new window.Stage(canvas, { debug: Q.dbg, lowPower: Q.low || weak });
   } catch (err) {

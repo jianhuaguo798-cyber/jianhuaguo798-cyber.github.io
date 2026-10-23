@@ -146,7 +146,10 @@
     this.rtFg = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, { depthBuffer: true }, this.gl2 ? { samples: 4 } : {}));
     this.rtBloomA = new THREE.WebGLRenderTarget(4, 4, rtOpt);
     this.rtBloomB = new THREE.WebGLRenderTarget(4, 4, rtOpt);
-    this.fieldOn = this.gl2 ? 1 : 0;
+    // 交互场需要能渲染到半浮点纹理（部分 iOS 只有 half_float 扩展），都没有就关掉擦亮效果
+    var gl = this.renderer.getContext();
+    var cbf = this.gl2 && (gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+    this.fieldOn = cbf ? 1 : 0;
     var fOpt = Object.assign({}, rtOpt, { type: this.gl2 ? halfF : THREE.UnsignedByteType });
     this.rtFieldA = new THREE.WebGLRenderTarget(4, 4, fOpt);
     this.rtFieldB = new THREE.WebGLRenderTarget(4, 4, fOpt);
