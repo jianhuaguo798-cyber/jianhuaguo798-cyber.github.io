@@ -195,7 +195,7 @@
 
     this.ringTube = 0.03;
     this.mRing = mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, blend: CUSTOM_KEEPA, uniforms: this.glassU({
-      tScene: tx.bg, uBgMap: 1, uKind: 0, uIri: 0.35, uBehind: 40, uAbsorb: 0, uTube: this.ringTube, uEps: 0.0008, uTMax: 2.4,
+      tScene: tx.bg, uBgMap: 1, uKind: 0, uIri: 0.85, uBehind: 40, uAbsorb: 0, uTube: this.ringTube, uEps: 0.0008, uTMax: 2.4,
       uTint: new THREE.Vector3(1.0, 1.0, 1.02)
     }) });
     this.ring = new THREE.Mesh(new THREE.TorusGeometry(1, this.ringTube * 1.7, 32, 320), this.mRing);
@@ -205,7 +205,7 @@
     this.mPortrait = mat({ fs: SH.FS_PORTRAIT, blend: CUSTOM_COVER, uniforms: {
       tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.75 },
       uOpacity: { value: 0 }, uTime: { value: 0 }, uTint: { value: new THREE.Vector3(0.90, 0.88, 0.99) }, uWaterV: { value: 0.12 },
-      tBack: { value: this.rtA.texture }, uRes: { value: new THREE.Vector2(2, 2) }, uHaze: { value: new THREE.Vector3(0.93, 0.88, 0.97) }
+      tBack: { value: this.rtA.texture }, uRes: { value: new THREE.Vector2(2, 2) }, uHaze: { value: new THREE.Vector3(0.88, 0.90, 1.0) }
     } });
     this.portrait = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.mPortrait);
     this.portrait.renderOrder = 20;
@@ -234,7 +234,7 @@
       var p = { delay: i * 0.13 };
       function gm(refl) {
         return mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, blend: CUSTOM_KEEPA, uniforms: self.glassU({
-          tScene: self.rtA.texture, uKind: 2, uIri: 0.22, uRefl: refl ? 1 : 0, uBehind: 1.6, uAbsorb: 0.9,
+          tScene: self.rtA.texture, uKind: 2, uIri: 0.5, uRefl: refl ? 1 : 0, uBehind: 1.6, uAbsorb: 0.9,
           uTint: new THREE.Vector3(1.0, 0.99, 1.03)
         }) });
       }
@@ -331,7 +331,7 @@
     });
 
     // —— bloom + post
-    this.mBright = mat({ vs: SH.VS_QUAD, fs: SH.FS_BRIGHT, noBlend: true, transparent: false, uniforms: { tSrc: { value: this.rtFg.texture }, uThr: { value: 0.90 } } });
+    this.mBright = mat({ vs: SH.VS_QUAD, fs: SH.FS_BRIGHT, noBlend: true, transparent: false, uniforms: { tSrc: { value: this.rtFg.texture }, uThr: { value: 0.95 } } });
     this.sBright = quadScene(this.mBright);
     this.mBlur = mat({ vs: SH.VS_QUAD, fs: SH.FS_BLUR, noBlend: true, transparent: false, uniforms: { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } } });
     this.sBlur = quadScene(this.mBlur);
@@ -340,7 +340,8 @@
       uRes: { value: new THREE.Vector2() }, uTime: { value: 0 },
       uLens: { value: new THREE.Vector3(-999, -999, 20) }, uLensV: { value: new THREE.Vector2() }, uLensA: { value: 0 },
       uShock: { value: new THREE.Vector4(0, 0, 9, 0) },
-      uWhite: { value: 1 }, uBurst: { value: 0 }, uCA: { value: 0 }, uBloom: { value: 0.42 }, uGrain: { value: 0.026 },
+      uWhite: { value: 1 }, uBurst: { value: 0 }, uCA: { value: 0 }, uBloom: { value: 0.35 }, uGrain: { value: 0.018 },
+      uWB: { value: new THREE.Vector3(0.975, 1.0, 1.045) }, uExpo: { value: 1.04 }, uVib: { value: 0.35 }, uClarity: { value: 0.55 }, uGradeOn: { value: 1 },
       uDbg: { value: this.opts.debug || 0 }, uFrame: { value: new THREE.Vector4() }
     } });
     this.sPost = quadScene(this.mPost);
@@ -432,7 +433,8 @@
       var dark = rowOf[i].mode === 'dark';
       var m = mat({ fs: SH.FS_TITLE, blend: CUSTOM_COVER, uniforms: {
         tGlyph: { value: texG }, uRect: { value: new THREE.Vector4(u0, v0, u1, v1) },
-        uAlpha: { value: 0 }, uDarkK: { value: dark ? 1 : 0 },
+        uAlpha: { value: 0 }, uDarkK: { value: dark ? 1 : 0 }, uFadeF: { value: (dark && i === rowOf[i].to && rowOf[i].align === 'l' && LT.rows.length > 1 && rowOf[i].base === LT.rows[1].base) ? 1 : 0 },
+        uCapV: { value: new THREE.Vector2((pad + desc) / cellH, (pad + desc + LT.cap) / cellH) },
         uColor: { value: dark ? new THREE.Vector3(0.165, 0.165, 0.196) : new THREE.Vector3(1, 1, 1) }
       } });
       var mesh = new THREE.Mesh(geo, m);
@@ -717,7 +719,7 @@
     gu.uPanelA.value = 1 - smooth(seg(p, 0.34, 0.48));
     gu.uDistP.value = 14 * ud * (1 + focus * 5 + shatter * 4.5);
     gu.uDistS.value = 125 * ud * (1 + focus * 1.5 + shatter * 1.5);
-    gu.uTime.value = t; gu.uChroma.value = 1.0 + focus * 1.4 + shatter * 1.0;
+    gu.uTime.value = t; gu.uChroma.value = 1.9 + focus * 1.4 + shatter * 1.0;
     gu.uLight.value.set(sm.lx * this.rw, (1 - sm.ly) * this.rh, 0.32 * this.rh);
     gu.uFrost.value = focus * 0.10;
     gu.uCaustic.value = 0.30 * seg(T, 2.6, 3.4) * (S.inside ? 1 : 0.55) * (1 - seg(p, 0.05, 0.3));

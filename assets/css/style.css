@@ -78,6 +78,15 @@ body.is-loading { overflow: hidden; }
 
 /* 网格细线（由 JS 按时间轴驱动 --p 生长） */
 .ln { position: absolute; display: block; background: var(--line); pointer-events: none !important; --p: 1; }
+/* 设计稿实测：竖线两端渐隐、中段较深；横线左段深灰 → 经过人像淡出 → 右段变白 */
+.ln--v1 { background: linear-gradient(180deg, rgba(58, 60, 82, 0) 0%, rgba(58, 60, 82, .55) 9%, rgba(58, 60, 82, .42) 40%, rgba(58, 60, 82, .50) 78%, rgba(58, 60, 82, 0) 100%); }
+.ln--v2a { background: linear-gradient(180deg, rgba(58, 60, 82, 0) 0%, rgba(58, 60, 82, .40) 25%, rgba(58, 60, 82, .34) 100%); }
+.ln--v2b { background: linear-gradient(180deg, rgba(58, 60, 82, .34) 0%, rgba(58, 60, 82, .38) 70%, rgba(58, 60, 82, 0) 100%); }
+.ln--h1, .ln--h2 {
+  background: linear-gradient(90deg,
+    rgba(58, 60, 82, 0) 0%, rgba(58, 60, 82, .30) 3%, rgba(58, 60, 82, .32) 34%, rgba(58, 60, 82, .16) 46%,
+    rgba(58, 60, 82, 0) 56%, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, .62) 84%, rgba(255, 255, 255, .45) 100%);
+}
 .ln--v { width: 1px; transform-origin: top; transform: scaleY(var(--p)); }
 .ln--h { height: 1px; transform-origin: left; transform: scaleX(var(--p)); }
 .ln--v1  { left: calc(58 * var(--u));  top: calc(-1 * var(--oy)); height: calc(845 * var(--u) + var(--oy)); }
@@ -201,6 +210,7 @@ body.is-loading { overflow: hidden; }
 .is-mob .tag--br, .is-mob .cue, .is-mob .ln--v2a, .is-mob .ln--v2b { display: none; }
 .is-mob .ln--v1 { left: calc(24 * var(--u)); height: calc(1500 * var(--u) + 2 * var(--oy)); }
 .is-mob .ln--h1 { left: 0; top: calc(150 * var(--u)); width: calc(750 * var(--u) + var(--ox)); }
+.is-mob .ln--h1, .is-mob .ln--h2 { background: linear-gradient(90deg, rgba(58, 60, 82, .05) 0%, rgba(58, 60, 82, .30) 10%, rgba(58, 60, 82, .26) 60%, rgba(255, 255, 255, .5) 92%, rgba(255, 255, 255, .2) 100%); }
 .is-mob .ln--h2 { left: 0; top: calc(545 * var(--u)); width: calc(750 * var(--u) + var(--ox)); }
 .is-mob .title-hit { left: calc(40 * var(--u)); top: calc(170 * var(--u)); width: calc(670 * var(--u)); height: calc(350 * var(--u)); }
 .is-mob .pill { left: calc(40 * var(--u)); top: calc(1290 * var(--u)); height: calc(64 * var(--u)); gap: calc(22 * var(--u)); padding-right: calc(28 * var(--u)); }
