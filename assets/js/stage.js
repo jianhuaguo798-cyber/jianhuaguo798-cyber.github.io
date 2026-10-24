@@ -14,15 +14,15 @@
       portrait: { x: 763, y: 76, w: 928 },
       glass: { x0: 1068, x1: 1580, full: 720 },
       prisms: [
-        { dx0: 780, dx1: 925, top: 670, base: 1000, D: 11.7, rot: 0.40 },
-        { dx0: 950, dx1: 1030, top: 790, base: 1002, D: 12.1, rot: 0.30 },
-        { dx0: 1415, dx1: 1595, top: 655, base: 1004, D: 11.5, rot: -0.24 },
+        { dx0: 780, dx1: 925, top: 670, base: 993, D: 13.9, rot: 0.40 },
+        { dx0: 950, dx1: 1030, top: 790, base: 995, D: 14.2, rot: 0.30 },
+        { dx0: 1415, dx1: 1595, top: 655, base: 990, D: 13.7, rot: -0.24 },
         null
       ],
       bubbles: [{ dx: 1652, dy: 553, r: 72, D: 10.5 }, { dx: 46, dy: 1112, r: 238, D: 6.0 }],
       lav: { cx: 1750, bottom: 1068, size: 340 },
       fly: { x: 1866, y: 728, w: 118, from: [2160, 330], c1: [1640, 360], c2: [1700, 760], loop: [1560, 520, 300, 190] },
-      spawn: [640, 1940],
+      spawn: [640, 1940], lavPerch: [0.90, 0.70],
       title: { cap: 218, rows: [
         { from: 0, to: 4, align: 'l', x: 80, base: 428, gap: 10, mode: 'glass' },
         { from: 5, to: 8, align: 'r', x: 1925, base: 428, gap: 18, mode: 'glass' }
@@ -34,15 +34,15 @@
       portrait: { x: 0, y: 420, w: 800 },
       glass: { x0: 263, x1: 712, full: 10 },
       prisms: [
-        { dx0: 30, dx1: 118, top: 1010, base: 1240, D: 11.7, rot: 0.40 },
-        { dx0: 128, dx1: 176, top: 1090, base: 1242, D: 12.1, rot: 0.30 },
-        { dx0: 520, dx1: 628, top: 1000, base: 1244, D: 11.5, rot: -0.24 },
+        { dx0: 30, dx1: 118, top: 1010, base: 1232, D: 13.9, rot: 0.40 },
+        { dx0: 128, dx1: 176, top: 1090, base: 1234, D: 14.2, rot: 0.30 },
+        { dx0: 520, dx1: 628, top: 1000, base: 1230, D: 13.7, rot: -0.24 },
         null
       ],
       bubbles: [{ dx: 664, dy: 930, r: 48, D: 10.5 }, { dx: 14, dy: 1470, r: 160, D: 6.0 }],
       lav: { cx: 650, bottom: 1272, size: 230 },
       fly: { x: 708, y: 1094, w: 82, from: [900, 780], c1: [560, 820], c2: [600, 1120], loop: [500, 930, 190, 150] },
-      spawn: [120, 720],
+      spawn: [120, 720], lavPerch: [0.90, 0.70],
       title: { cap: 150, rows: [
         { from: 0, to: 4, align: 'l', x: 40, base: 330, gap: 7, mode: 'dark' },
         { from: 5, to: 8, align: 'r', x: 710, base: 505, gap: 12, mode: 'white' }
@@ -107,7 +107,7 @@
     this.sm = { mx: 0, my: 0, lx: 0.5, ly: 0.5, lensX: 0, lensY: 0, lensVX: 0, lensVY: 0, fly: 0 };
     this.shock = { x: 0, y: 0, age: 9, amp: 0 };
     this.bubbles = [];
-    this.fly = { mode: 'intro', t0: 0, path: null, x: 0, y: 0, dir: 1, flap: 0.3, burstAt: 4, lastPos: null };
+    this.fly = { mode: 'intro', dir: 1 };
     this.perf = { acc: 0, n: 0, steps: 0 };
     this.viewProj = new THREE.Matrix4();
   }
@@ -171,7 +171,8 @@
     this.sMain = new THREE.Scene();
     this.mBg = mat({ fs: SH.FS_BG, noBlend: true, transparent: false, uniforms: {
       tBg: { value: tx.bg }, tField: { value: null }, uRes: { value: new THREE.Vector2() }, uTime: { value: 0 },
-      uHorizon: { value: HORIZON / 1126 }, uWhite: { value: 0 }, uBright: { value: 0 }, uFieldOn: { value: this.fieldOn }
+      uHorizon: { value: HORIZON / 1126 }, uWhite: { value: 0 }, uBright: { value: 0 }, uFieldOn: { value: this.fieldOn },
+      uContact: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] }
     } });
     this.bg = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.mBg);
     this.bg.renderOrder = 0; this.bg.frustumCulled = false;
@@ -179,7 +180,7 @@
 
     this.glassU = function (extra) {
       var u = {
-        tScene: { value: null }, tEnv: { value: tx.bg }, uBgRect: { value: new THREE.Vector4(0, 0, 1, 1) }, uBgMap: { value: 0 },
+        tScene: { value: null }, tEnv: { value: tx.bg }, uBgRect: { value: new THREE.Vector4(0, 0, 1, 1) }, uBgMap: { value: 0 }, uSeedB: { value: 0 },
         uModel: { value: new THREE.Matrix4() }, uInvModel: { value: new THREE.Matrix4() }, uViewProj: { value: self.viewProj },
         uLight: { value: new THREE.Vector3(0, 2, 2) }, uTime: { value: 0 }, uOpacity: { value: 1 }, uKind: { value: 0 },
         uIri: { value: 0.3 }, uRefl: { value: 0 }, uWaterY: { value: -999 }, uBehind: { value: 2 }, uAbsorb: { value: 0.5 },
@@ -205,15 +206,14 @@
       uOpacity: { value: 0 }, uTime: { value: 0 }, uTint: { value: new THREE.Vector3(0.90, 0.88, 0.99) }, uWaterV: { value: 0.12 }
     } });
     this.portrait = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.mPortrait);
-    this.portrait.renderOrder = 2;
-    this.sMain.add(this.portrait);
+    this.portrait.renderOrder = 20;
 
     // —— reed：竖纹玻璃 + 标题
     this.mReed = mat({ vs: SH.VS_QUAD, fs: SH.FS_REED, noBlend: true, transparent: false, uniforms: {
       tScene: { value: this.rtScene.texture }, tField: { value: null }, uRes: { value: new THREE.Vector2() },
       uGlass: { value: new THREE.Vector4(0.5, 0.75, 22, 1) }, uTime: { value: 0 }, uChroma: { value: 1 },
       uFieldOn: { value: this.fieldOn }, uFrost: { value: 0 }, uLight: { value: new THREE.Vector3(0, 0, 400) }, uPanelA: { value: 1 },
-      uDistP: { value: 30 }, uDistS: { value: 120 }
+      uDistP: { value: 30 }, uDistS: { value: 120 }, uWaterPx: { value: -1 }
     } });
     this.sReed = quadScene(this.mReed);
     this.sTitle = new THREE.Scene();
@@ -244,13 +244,29 @@
       self.sPrism.add(p.mesh);
       return p;
     });
+    this.sPrism.add(this.portrait);
+    this.mPRefl = mat({ fs: SH.FS_PREFL, blend: CUSTOM_KEEPA, uniforms: {
+      tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.75 },
+      uOpacity: { value: 0 }, uTime: { value: 0 }, uWaterV: { value: 0.12 }
+    } });
+    this.pRefl = new THREE.Mesh(this.portrait.geometry, this.mPRefl);
+    this.pRefl.renderOrder = 21;
+    this.sPrism.add(this.pRefl);
+    // 人像蒙版缩略数据：用来找人在水线处的左右边界（入水涟漪的范围）
+    try {
+      var mc = document.createElement('canvas'); mc.width = 294; mc.height = 335;
+      var mctx = mc.getContext('2d'); mctx.drawImage(tx.portraitMask.image, 0, 0, 294, 335);
+      this.maskData = mctx.getImageData(0, 0, 294, 335).data;
+    } catch (e) { this.maskData = null; }
 
     var sphere = new THREE.SphereGeometry(1.03, 72, 48);
     this.bubbleGeo = sphere;
     this.mainBubbles = [{ ph: 0.3, delay: 2.05 }, { ph: 1.7, delay: 1.75 }].map(function (b, i) {
       b.mesh = new THREE.Mesh(sphere, mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, transparent: true, depthTest: true, depthWrite: true, uniforms: self.glassU({
-        tScene: self.rtReed.texture, uKind: 1, uIri: i === 1 ? 0.22 : 0.32, uAbsorb: 0.5, uTint: new THREE.Vector3(1.01, 1.0, 1.03)
+        tScene: self.rtReed.texture, uKind: 1
       }) }));
+      b.mesh.material.extensions = { derivatives: true };
+      b.mesh.material.uniforms.uSeedB.value = i * 11.3 + 2.0;
       b.mesh.renderOrder = 20 + i;
       self.sFg.add(b.mesh);
       return b;
@@ -258,8 +274,9 @@
     // 漂浮小气泡池
     for (var i = 0; i < 7; i++) {
       var bm = new THREE.Mesh(sphere, mat({ vs: SH.VS_GLASS, fs: SH.FS_GLASS, transparent: true, depthTest: true, depthWrite: false, uniforms: self.glassU({
-        tScene: self.rtReed.texture, uKind: 1, uIri: 0.45, uAbsorb: 0.3, uTint: new THREE.Vector3(1.01, 1.0, 1.03)
+        tScene: self.rtReed.texture, uKind: 1
       }) }));
+      bm.material.extensions = { derivatives: true };
       bm.visible = false; bm.renderOrder = 30 + i;
       this.sFg.add(bm);
       this.bubbles.push({ mesh: bm, alive: false, born: 0, life: 8, pop: -1 });
@@ -495,6 +512,12 @@
     this.portrait.scale.set(this.wLen(pw, pD), this.wLen(ph, pD), 1);
     this.portraitBase = this.portrait.position.clone();
     this.waterYp = this.wAt(0, LY.water, pD).y;          // 人像所在深度处的水面高度
+    this.bodyWater = null;
+    if (this.maskData) {
+      var ry = Math.round(clamp((LY.water - LY.portrait.y) / ph, 0, 0.997) * 335), bx0 = -1, bx1 = -1;
+      for (var xx = 0; xx < 294; xx++) { if (this.maskData[(ry * 294 + xx) * 4] > 128) { if (bx0 < 0) bx0 = xx; bx1 = xx; } }
+      if (bx0 >= 0) this.bodyWater = [LY.portrait.x + bx0 / 294 * pw, LY.portrait.x + bx1 / 294 * pw];
+    }
 
     // 竖纹玻璃（虚拟面板深度 11）
     this.glassD = 11;
@@ -663,6 +686,10 @@
     this.portrait.position.copy(this.portraitBase);
     this.portrait.position.y += this.portrait.scale.y * (breathe - (1 - oCubic(seg(T, 0.95, 2.6))) * 0.035);
     pu.uWaterV.value = (this.waterYp - (this.portrait.position.y - this.portrait.scale.y / 2)) / this.portrait.scale.y;
+    this.pRefl.position.set(this.portrait.position.x, 2 * this.waterYp - this.portrait.position.y, this.portrait.position.z);
+    this.pRefl.scale.set(this.portrait.scale.x, -this.portrait.scale.y, 1);
+    var prU = this.mPRefl.uniforms;
+    prU.uWaterV.value = pu.uWaterV.value; prU.uOpacity.value = pu.uOpacity.value; prU.uTime.value = t;
 
     // —— 竖纹玻璃
     var gx0w = lerp(this.glassX0, this.glassXFull, smooth(seg(p, 0.04, 0.26)));
@@ -681,6 +708,8 @@
     gu.uTime.value = t; gu.uChroma.value = 1.0 + focus * 1.4 + shatter * 1.0;
     gu.uLight.value.set(sm.lx * this.rw, (1 - sm.ly) * this.rh, 0.32 * this.rh);
     gu.uFrost.value = focus * 0.10;
+    var wpx = this.wAt(0, this.LY.water, this.glassD).project(this.cam);
+    gu.uWaterPx.value = (wpx.y * 0.5 + 0.5) * this.rh;
 
     // —— 标题
     var split = g0.x * 0.5 + 0.5;
@@ -743,20 +772,36 @@
       return Math.abs(b.y - a.y) * 0.5;   // 以屏高为单位的半径
     };
     this.mainBubbles.forEach(function (b, i) {
-      var k = oBack(seg(T, b.delay, b.delay + 0.95));
+      var k = oCubic(seg(T, b.delay, b.delay + 1.4));
       b.mesh.position.copy(b.base);
-      b.mesh.position.y += Math.sin(t * 0.7 + b.ph) * b.R * 0.10;
-      b.mesh.position.x += Math.sin(t * 0.43 + b.ph * 2.0) * b.R * 0.05;
-      b.mesh.scale.setScalar(Math.max(0.0001, b.R * k));
+      b.mesh.position.y += Math.sin(t * 0.55 + b.ph) * b.R * 0.07 - (1 - k) * b.R * 0.5;
+      b.mesh.position.x += Math.sin(t * 0.37 + b.ph * 2.0) * b.R * 0.05;
+      var wob = Math.sin(t * 2.1 + b.ph) * 0.010 + Math.sin(t * 3.3 + b.ph * 1.7) * 0.005;
+      b.mesh.scale.set(b.R * (1 + wob), b.R * (1 - wob), b.R);
+      b.mesh.rotation.z = Math.sin(t * 0.13 + b.ph) * 0.4;
       var u = b.mesh.material.uniforms;
       u.uTime.value = t; u.uLight.value.copy(light);
-      u.uBehind.value = b.R * 6.0; u.uObjScale.value = b.mesh.scale.x;
-      u.uOpacity.value = smooth(seg(T, b.delay, b.delay + 0.4));
+      u.uBehind.value = b.R * 4.0; u.uObjScale.value = b.R;
+      u.uOpacity.value = smooth(seg(T, b.delay, b.delay + 0.9));
       self.syncGlass(b.mesh);
     });
 
     // —— 漂浮小气泡
-    if (!reduced && T > 3.2) this.tickBubbles(t, dt, light, projR);
+    if (!reduced && T > 3.0) this.tickBubbles(S, light);
+
+    // —— 入水涟漪：人 + 三根长方体
+    var cu = this.mBg.uniforms.uContact.value;
+    var setC = function (i, x0, x1, dy, D, amp) {
+      var a = self.wAt(x0, dy, D).project(self.cam), b = self.wAt(x1, dy, D).project(self.cam);
+      cu[i].set((a.x + b.x) / 4 + 0.5, a.y * 0.5 + 0.5, Math.abs(b.x - a.x) / 4, amp);
+    };
+    if (this.bodyWater) setC(0, this.bodyWater[0], this.bodyWater[1], this.LY.water, 13, pu.uOpacity.value);
+    else cu[0].w = 0;
+    this.prisms.forEach(function (pr, i) {
+      if (i > 2) return;
+      if (pr.off) { cu[i + 1].w = 0; return; }
+      setC(i + 1, pr.dx0, pr.dx1, pr.base, pr.D, 0.75 * pr.mesh.material.uniforms.uOpacity.value);
+    });
 
     // —— 薰衣草
     var lu = this.mLav.uniforms;
@@ -822,41 +867,61 @@
     u.uInvModel.value.copy(m.matrixWorld).invert();
   };
 
-  Stage.prototype.tickBubbles = function (t, dt, light, projR) {
-    var self = this;
-    if (t > this.nextBubble) {
-      var b = this.bubbles.filter(function (x) { return !x.alive; })[0];
-      if (b) {
-        var r = hash(t * 3.1);
-        b.alive = true; b.born = t; b.life = 7 + hash(t * 1.7) * 5; b.pop = -1;
-        b.D = 8.6 + hash(t * 5.3) * 1.8;
-        var sp = self.LY.spawn;
-        b.dx = sp[0] + r * (sp[1] - sp[0]); b.dy = self.LY.horizon + 10;
-        b.r = 9 + hash(t * 7.7) * 20;
-        b.seed = hash(t * 9.1) * 6.28;
+  Stage.prototype.tickBubbles = function (S, light) {
+    var t = S.t, dt = S.dt, self = this, LY = this.LY;
+    var alive = 0;
+    this.bubbles.forEach(function (b) { if (b.alive) alive++; });
+    if (t > this.nextBubble && alive < 4) {
+      var nb = this.bubbles.filter(function (x) { return !x.alive; })[0];
+      if (nb) {
+        var h1 = hash(t * 3.1), h2 = hash(t * 5.7), h3 = hash(t * 7.3);
+        nb.alive = true; nb.born = t; nb.pop = -1; nb.sx = undefined;
+        nb.r = 12 + h1 * 26;
+        nb.D = 7.6 + h2 * 2.8;
+        nb.x = -nb.r * 2 - 20; nb.y = LY.fh * (0.26 + 0.46 * h3);
+        nb.vx0 = (24 + 26 * hash(t * 9.1)) * LY.fw / 2000; nb.vy0 = -9 + 11 * hash(t * 4.4);
+        nb.vx = nb.vx0; nb.vy = nb.vy0;
+        nb.life = 12 + 8 * hash(t * 2.2);
+        nb.seed = hash(t * 1.9) * 6.28;
+        nb.mesh.material.uniforms.uSeedB.value = nb.seed * 3.0;
       }
-      this.nextBubble = t + 1.6 + hash(t) * 2.6;
+      this.nextBubble = t + 2.4 + hash(t * 1.3) * 3.0;
     }
     this.bubbles.forEach(function (b) {
       if (!b.alive) { b.mesh.visible = false; return; }
       var age = t - b.born;
-      var k = age / b.life;
-      if (b.pop < 0 && k >= 1) b.pop = t;
-      var popK = b.pop >= 0 ? (t - b.pop) / 0.28 : 0;
-      if (popK >= 1) { b.alive = false; b.mesh.visible = false; return; }
-      var dy = b.dy - age * (48 + b.r * 1.6);
-      var dx = b.dx + Math.sin(age * 1.3 + b.seed) * 18 + age * 6;
-      var pos = self.wAt(dx, dy, b.D);
-      var R = self.wLen(b.r * (0.6 + 0.4 * Math.min(1, age * 0.8)), b.D) * (1 + popK * 0.45);
+      // 风 + 湍流
+      var tx = b.vx0 + Math.sin(t * 0.6 + b.seed) * 10 + Math.sin(t * 1.7 + b.seed * 2.3) * 5;
+      var ty = b.vy0 + Math.sin(t * 0.8 + b.seed * 1.7) * 8 + Math.sin(t * 2.1 + b.seed) * 3;
+      // 光标带起的气流：顺着鼠标运动方向推开
+      if (S.inside && b.sx !== undefined) {
+        var dx = b.sx - S.mx, dy = b.sy - S.my, d = Math.hypot(dx, dy) + 1e-3;
+        var rad = 200 * Math.max(0.6, self.L.u * 1.4);
+        if (d < rad) {
+          var pw = Math.pow(1 - d / rad, 2);
+          tx += (S.mvx / self.L.u) * 0.30 * pw + dx / d * 60 * pw;
+          ty += (S.mvy / self.L.u) * 0.30 * pw + dy / d * 60 * pw;
+        }
+      }
+      b.vx = damp(b.vx, tx, 1.2, dt); b.vy = damp(b.vy, ty, 1.2, dt);
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.pop < 0 && (age > b.life || b.x > LY.fw + b.r * 3 || b.y < -b.r * 3 || b.y > LY.water + 30)) b.pop = t;
+      var popK = b.pop >= 0 ? (t - b.pop) / 0.09 : 0;
+      if (popK >= 1) { b.alive = false; b.mesh.visible = false; b.sx = undefined; return; }
+      var pos = self.wAt(b.x, b.y, b.D);
+      var R = self.wLen(b.r, b.D) * (1 + popK * 0.06);
+      var wob = Math.sin(t * 6.5 + b.seed) * 0.022 + Math.sin(t * 4.1 + b.seed * 2.0) * 0.010;
       b.mesh.position.copy(pos);
-      b.mesh.scale.setScalar(R);
+      b.mesh.scale.set(R * (1 + wob), R * (1 - wob), R);
+      b.mesh.rotation.z = t * 0.15 + b.seed;
       b.mesh.visible = true;
       var u = b.mesh.material.uniforms;
       u.uTime.value = t; u.uLight.value.copy(light);
-      u.uBehind.value = R * 6.0; u.uObjScale.value = R;
+      u.uBehind.value = R * 4.0; u.uObjScale.value = R;
+      u.uOpacity.value = smooth(seg(age, 0, 0.9)) * (1 - popK);
       self.syncGlass(b.mesh);
-      u.uOpacity.value = smooth(seg(age, 0, 0.6)) * (1 - popK) * (1 - smooth(seg(k, 0.85, 1.0)) * 0.3);
-      b.screen = pos.clone().project(self.cam);
+      var sc = pos.clone().project(self.cam);
+      b.screen = sc; b.sx = (sc.x * 0.5 + 0.5) * self.W; b.sy = (0.5 - sc.y * 0.5) * self.H;
     });
   };
 
@@ -872,80 +937,105 @@
   };
 
   /* ---------- 蝴蝶 ---------- */
-  Stage.prototype.tickFly = function (S, light) {
-    var f = this.fly, t = S.t, T = S.T, dt = S.dt, u = this.mFly.uniforms, self = this;
-    var perch = this.flyPerch;
-    var pos = { x: perch.dx, y: perch.dy };
-    var flap, dir = 1, tilt = 0;
-    u.uTime.value = t;
-    u.uOpacity.value = smooth(seg(T, 2.55, 2.9)) * (1 - smooth(seg(S.p, 0.3, 0.5)));
+  function catmull(pts, q) {
+    var n = pts.length - 1, x = clamp(q, 0, 1) * n, i = Math.min(n - 1, Math.floor(x)), f = x - i;
+    var p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n, i + 2)];
+    var f2 = f * f, f3 = f2 * f;
+    function c(k) { return 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * f + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * f2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * f3); }
+    return new THREE.Vector3(c('x'), c('y'), p1.z);
+  }
 
-    if (T < 4.0 && !S.reduced) {
-      // 开场：从右上方飞入落到花穗
-      var k = ioCubic(seg(T, 2.55, 4.0));
-      var FL = this.LY.fly;
-      var a = { x: FL.from[0], y: FL.from[1] }, c1 = { x: FL.c1[0], y: FL.c1[1] }, c2 = { x: FL.c2[0], y: FL.c2[1] };
-      pos = bez(a, c1, c2, perch, k);
-      flap = 0.2 + 1.0 * (0.5 + 0.5 * Math.sin(t * 26));
-      flap = lerp(flap, 0.35, smooth(seg(k, 0.85, 1)));
-      dir = 1;
-      f.mode = 'perch'; f.burstAt = t + 3;
-    } else if (f.mode === 'perch') {
-      flap = 0.32 + 0.16 * Math.sin(t * 1.4);
-      if (t > f.burstAt) {
-        var bk = (t - f.burstAt) / 0.7;
-        if (bk < 1) flap = 0.3 + 0.95 * Math.abs(Math.sin(bk * Math.PI * 3)) * (1 - bk * 0.3);
-        else f.burstAt = t + 3.5 + hash(t) * 4;
-      }
-      // 光标靠近 → 起飞
-      if (S.inside && !S.reduced && S.p < 0.1) {
-        var sp = this.wAt(perch.dx, perch.dy, this.flyD).project(this.cam);
-        var sx = (sp.x * 0.5 + 0.5) * this.W, sy = (0.5 - sp.y * 0.5) * this.H;
-        if (Math.hypot(S.mx - sx, S.my - sy) < 110 * Math.max(0.6, this.L.u * 1.4) && t - (f.landAt || 0) > 1.2) {
-          f.mode = 'fly'; f.t0 = t; f.seed = hash(t) * 6.28;
-        }
-      }
+  // 与 VS_LAV 相同的摆动公式：花穗尖在世界坐标里的偏移
+  Stage.prototype.lavSway = function (u, v, t) {
+    var bend = Math.pow(v, 1.7), ph = u * 3.4;
+    var sw = Math.sin(t * 1.05 + ph) * 0.55 + Math.sin(t * 1.85 + ph * 2.2 + 1.3) * 0.28 + Math.sin(t * 0.47 + 0.5) * 0.45;
+    return { dx: (sw * 0.016 + (this.sm.push || 0)) * bend * this.lav.scale.x, dy: -Math.abs(sw) * bend * 0.004 * this.lav.scale.y };
+  };
+
+  // 停着时：翅膀缓慢开合
+  Stage.prototype.perchWing = function (t) {
+    return 0.60 + 0.42 * Math.sin(t * 0.62 + Math.sin(t * 0.21) * 1.6);
+  };
+
+  Stage.prototype.flyPath = function (start, seed, n) {
+    var lp = this.LY.fly.loop, pts = [start.clone()];
+    for (var i = 0; i < n; i++) {
+      var a = hash(seed * 3.1 + i * 7.7) * Math.PI * 2;
+      var r = 0.45 + 0.55 * hash(seed * 5.3 + i * 2.9);
+      pts.push(this.wAt(lp[0] + Math.cos(a) * lp[2] * r, lp[1] + Math.sin(a) * lp[3] * r, this.flyD));
     }
-    if (f.mode === 'fly') {
-      var age = t - f.t0, dur = 5.2;
-      var q = age / dur;
-      if (q >= 1) { f.mode = 'perch'; f.landAt = t; f.burstAt = t + 2.5; }
-      else {
-        // 绕一圈再回到原位：出发 → 盘旋 → 返回
-        var ang = q * Math.PI * 2 + f.seed * 0.0;
-        var lp = this.LY.fly.loop, cx = lp[0], cy = lp[1], rx = lp[2], ry = lp[3];
-        var loop = { x: cx + Math.cos(ang * 1.0 + 0.3) * rx + Math.sin(ang * 2.0) * 60, y: cy + Math.sin(ang * 1.0 + 0.3) * ry - Math.sin(ang * 3.0) * 40 };
-        var w = smooth(seg(q, 0, 0.18)) * (1 - smooth(seg(q, 0.80, 1.0)));
-        pos = { x: lerp(perch.dx, loop.x, w), y: lerp(perch.dy, loop.y, w) };
-        pos.y += Math.sin(age * 9.0) * 6;
-        flap = 0.15 + 1.05 * (0.5 + 0.5 * Math.sin(t * 27));
-        flap = lerp(flap, 0.35, smooth(seg(q, 0.93, 1)));
-      }
-    }
-    // 朝向：按水平速度翻转
-    if (f.last) {
-      var vx = (pos.x - f.last.x) / Math.max(dt, 1e-3);
-      f.vx = damp(f.vx || 0, vx, 6, dt);
-      if (f.vx > 60) f.dir = -1; else if (f.vx < -60) f.dir = 1;
-      tilt = clamp(-(pos.y - f.last.y) / Math.max(dt, 1e-3) * 0.0006, -0.35, 0.35);
-    }
-    f.last = { x: pos.x, y: pos.y };
-    if (f.mode === 'perch' && T >= 4.0) f.dir = 1;
-    f.flap = flap;
-    this.wAt(pos.x, pos.y, this.flyD, this.flyMesh.position);
+    return pts;
+  };
+
+  Stage.prototype.tickFly = function (S, light) {
+    var f = this.fly, t = S.t, T = S.T, dt = S.dt, u = this.mFly.uniforms, LY = this.LY;
     var s = this.flyScale;
-    this.flyMesh.scale.set(s * (f.dir || 1), s, s);
-    this.flyMesh.rotation.set(0, 0, tilt * (f.dir || 1));
-    u.uFlap.value = flap;
+    u.uTime.value = t;
+    u.uOpacity.value = smooth(seg(T, 2.5, 2.8)) * (1 - smooth(seg(S.p, 0.3, 0.5)));
+    // 停靠点：右侧花穗尖，跟着薰衣草一起摆
+    var PU = LY.lavPerch, sw = this.lavSway(PU[0], PU[1], t), grow = this.mLav.uniforms.uGrow.value;
+    var perch = new THREE.Vector3(
+      (PU[0] - 0.5) * this.lav.scale.x * lerp(0.6, 1, grow) + this.lav.position.x + sw.dx,
+      lerp(-0.5, PU[1] - 0.5, grow) * this.lav.scale.y + this.lav.position.y + sw.dy,
+      this.lav.position.z + 0.01);
+    if (f.dir !== 1 && f.dir !== -1) f.dir = 1;
+    var seat = function (d) { return perch.clone().add(new THREE.Vector3(0.0138 * s * d, 0.3013 * s, 0)); };
+
+    if (S.reduced) f.mode = 'perch';
+    else if (T < 4.7) f.mode = 'intro';
+    else if (f.mode === 'intro') { f.mode = 'perch'; f.landAt = t; }
+
+    // 光标靠近 → 惊飞
+    if (f.mode === 'perch' && !S.reduced && S.inside && S.p < 0.1 && t - (f.landAt || 0) > 1.5) {
+      var sp = seat(f.dir).project(this.cam);
+      var sx = (sp.x * 0.5 + 0.5) * this.W, sy = (0.5 - sp.y * 0.5) * this.H;
+      if (Math.hypot(S.mx - sx, S.my - sy) < Math.max(70, 150 * this.L.u)) {
+        f.mode = 'fly'; f.t0 = t; f.dur = 5.0 + hash(t) * 1.5;
+        f.pts = this.flyPath(seat(f.dir), t, 3);
+      }
+    }
+
+    var pos, wing;
+    if (f.mode === 'intro' || f.mode === 'fly') {
+      var q, pts;
+      if (f.mode === 'intro') {
+        q = seg(T, 2.5, 4.7);
+        if (!f.introPts) f.introPts = this.flyPath(this.wAt(LY.fly.from[0], LY.fly.from[1], this.flyD), 1.7, 2);
+        pts = f.introPts;
+      } else {
+        q = (t - f.t0) / f.dur; pts = f.pts;
+        if (q >= 1) { f.mode = 'perch'; f.landAt = t; }
+      }
+      q = clamp(q, 0, 1);
+      var land = smooth(seg(q, 0.80, 1.0));
+      pos = catmull(pts.concat([seat(f.dir)]), Math.sin(q * Math.PI / 2));   // 起飞快、落地慢
+      var ph = t * 7.6 + Math.sin(t * 1.3) * 0.8;                            // 约 7~8 次/秒
+      var stroke = 0.5 - 0.5 * Math.cos(ph * Math.PI * 2);                    // 0 张开 → 1 合拢
+      var glide = smooth(seg(Math.sin(t * 0.9 + 1.7) + Math.sin(t * 2.3) * 0.4, 0.75, 1.1));
+      wing = lerp(0.12 + 1.18 * stroke, 0.18, glide);
+      pos.y += Math.sin(ph * Math.PI * 2) * 0.05 * s * (1 - glide) * (1 - land);   // 每次下拍抬升一下
+      pos.y -= glide * 0.02 * s;
+      pos.x += Math.sin(t * 5.3) * 0.025 * s * (1 - land);
+      wing = lerp(wing, this.perchWing(t), land);
+      if (f.last) {
+        var vx = (pos.x - f.last.x) / Math.max(dt, 1e-3);
+        f.vx = damp(f.vx || 0, vx, 5, dt);
+        // 翅膀合拢、侧影最窄的一瞬再转身，看不出跳变
+        if (stroke > 0.82 && land < 0.5) { if (f.vx > 0.05) f.dir = -1; else if (f.vx < -0.05) f.dir = 1; }
+        f.tilt = damp(f.tilt || 0, clamp(-(pos.y - f.last.y) / Math.max(dt, 1e-3) * 0.12 / s, -0.3, 0.3), 6, dt);
+      }
+    } else {
+      pos = seat(f.dir);
+      wing = this.perchWing(t);
+      f.tilt = damp(f.tilt || 0, 0, 4, dt);
+    }
+    f.last = pos.clone();
+    this.flyMesh.position.copy(pos);
+    this.flyMesh.scale.set(s * f.dir, s, s);
+    this.flyMesh.rotation.set(0, 0, (f.tilt || 0) * f.dir);
+    u.uFlap.value = wing;
     this.flyMesh.visible = u.uOpacity.value > 0.002;
   };
-  function bez(a, b, c, d, t) {
-    var it = 1 - t;
-    return {
-      x: it * it * it * a.x + 3 * it * it * t * b.x + 3 * it * t * t * c.x + t * t * t * d.x,
-      y: it * it * it * a.y + 3 * it * it * t * b.y + 3 * it * t * t * c.y + t * t * t * d.y
-    };
-  }
 
   /* ---------- 渲染 ---------- */
   Stage.prototype.render = function () {
