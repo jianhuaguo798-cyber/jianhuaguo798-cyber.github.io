@@ -114,7 +114,10 @@
     inside: false, down: false, overUI: false, reduced: reduced, titleHoverT: -1, titleHoverIdx: 4
   };
   var lastMove = { x: 0, y: 0, time: 0 };
+  var lastDrop = { x: -999, y: -999, t: 0 };
   var dot = $('#cursorDot');
+  var ring = $('#cursorRing');
+  var ringP = { x: -100, y: -100 };
   if (finePointer) body.classList.add('has-cursor');
   addEventListener('pointermove', function (e) {
     if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
@@ -125,10 +128,20 @@
     S.mx = e.clientX; S.my = e.clientY; S.inside = true;
     lastMove.time = now;
     dot.style.transform = 'translate3d(' + e.clientX + 'px,' + e.clientY + 'px,0)';
+    // 光标划过水面：沿途荡起涟漪
+    if (stage && stage.ready && S.T > 3 && S.p < 0.25 && e.clientY > stage.horizonPx + 8) {
+      var dd = Math.hypot(e.clientX - (lastDrop.x || -999), e.clientY - (lastDrop.y || -999));
+      if (dd > 34 && now - lastDrop.t > 70) {
+        var spd = Math.min(1, Math.hypot(S.mvx, S.mvy) / 1400);
+        stage.addDrop(e.clientX, e.clientY, 0.45 + 0.55 * spd);
+        lastDrop.x = e.clientX; lastDrop.y = e.clientY; lastDrop.t = now;
+      }
+    }
     var tgt = e.target;
     var ui = tgt && tgt.closest && tgt.closest('a, button, .pill, .card');
     S.overUI = !!ui;
     dot.classList.toggle('is-link', !!ui);
+    ring.classList.toggle('is-link', !!ui);
   }, { passive: true });
   document.addEventListener('pointerleave', function () { S.inside = false; });
   addEventListener('blur', function () { S.inside = false; });
@@ -140,7 +153,11 @@
       S.mx = e.clientX; S.my = e.clientY; S.inside = true; S.mvx = 0; S.mvy = 0;
       clearTimeout(touchTO); touchTO = setTimeout(function () { S.inside = false; }, 900);
     }
-    if (stage && S.T > 3 && !(e.target.closest && e.target.closest('a, button')) && S.p < 0.3) stage.click(e.clientX, e.clientY);
+    if (stage && stage.ready && S.T > 3 && !(e.target.closest && e.target.closest('a, button, .pill')) && S.p < 0.3) {
+      // 点水面：溅起一圈大涟漪；点天空：吹出一个肥皂泡
+      if (e.clientY > stage.horizonPx + 8) stage.addDrop(e.clientX, e.clientY, 1.7);
+      else stage.blowBubble(e.clientX, e.clientY);
+    }
   });
   addEventListener('pointerup', function () { S.down = false; });
   var titleHit = $('#titleHit');
@@ -265,6 +282,12 @@
     S.t = t; S.dt = dt; S.T = T; S.p = p;
 
     tickDom(T, t, p);
+    if (finePointer) {
+      ringP.x += (S.mx - ringP.x) * (1 - Math.exp(-dt * 16));
+      ringP.y += (S.my - ringP.y) * (1 - Math.exp(-dt * 16));
+      ring.style.transform = 'translate3d(' + ringP.x.toFixed(1) + 'px,' + ringP.y.toFixed(1) + 'px,0)';
+      ring.style.opacity = S.inside ? '' : '0';
+    }
     if (stage && stage.ready) {
       stage.update(S);
       stage.render();

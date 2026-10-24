@@ -178,18 +178,21 @@ body.is-loading { overflow: hidden; }
 .card { transition-property: opacity, transform, box-shadow; }
 .card:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 40px 80px rgba(110, 100, 180, .18); }
 
-/* ===== 光标 ===== */
+/* ===== 光标：小点 + 带惯性的细圆环 ===== */
+.cursor-dot, .cursor-ring { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; border-radius: 50%; opacity: 0; }
 .cursor-dot {
-  position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none;
-  width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
-  background: rgba(40, 38, 64, .82);
-  box-shadow: 0 0 0 1px rgba(255,255,255,.5);
-  transition: width .25s, height .25s, margin .25s, background .25s, opacity .3s;
-  opacity: 0;
+  width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+  background: rgba(43, 41, 66, .85);
+  transition: opacity .3s;
 }
-.has-cursor .cursor-dot { opacity: 1; }
+.cursor-ring {
+  width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border: 1px solid rgba(43, 41, 66, .38);
+  transition: width .35s cubic-bezier(.2,.7,.2,1), height .35s cubic-bezier(.2,.7,.2,1), margin .35s cubic-bezier(.2,.7,.2,1), border-color .3s, background .3s, opacity .3s;
+}
+.has-cursor .cursor-dot, .has-cursor .cursor-ring { opacity: 1; }
 .has-cursor .hero, .has-cursor .hero * { cursor: none; }
-.cursor-dot.is-link { width: 36px; height: 36px; margin: -18px 0 0 -18px; background: rgba(255,255,255,.18); box-shadow: 0 0 0 1px rgba(40,38,64,.55); }
+.cursor-ring.is-link { width: 54px; height: 54px; margin: -27px 0 0 -27px; border-color: rgba(43, 41, 66, .55); background: rgba(255, 255, 255, .16); }
 
 /* ===== 手机竖屏：750×1500 构图（JS 加 .is-mob） ===== */
 .is-mob .frame { width: calc(750 * var(--u)); height: calc(1500 * var(--u)); }

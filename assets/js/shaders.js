@@ -56,6 +56,7 @@
     'uniform sampler2D tBg; uniform sampler2D tField;',
     'uniform vec2 uRes; uniform float uTime, uHorizon, uWhite, uBright, uFieldOn;',
     'uniform vec4 uContact[4];',   // 入水点：xy 屏幕 uv，z 半宽（uv），w 强度
+    'uniform vec4 uDrops[8];',     // 水滴：xy 屏幕 uv，z 年龄（秒），w 强度
     'varying vec2 vUv;',
     'void main(){',
     '  vec2 uv = vUv; float vt = 1.0 - uv.y;',
@@ -95,6 +96,21 @@
     '      rip += vec2(sign(dv.x)*step(hw, abs(dv.x)), sign(dv.y))*cos(ph)*en;',
     '    }',
     '  }',
+    '  for (int i = 0; i < 8; i++) {',
+    '    vec4 Dp = uDrops[i];',
+    '    if (Dp.w > 0.0) {',
+    '      vec2 dv = (suv - Dp.xy)*vec2(uRes.x/uRes.y, 1.0);',
+    '      float flt = mix(0.16, 0.34, clamp((1.0 - Dp.y)*1.6, 0.0, 1.0));',
+    '      vec2 q = vec2(dv.x, dv.y/flt);',
+    '      float dd = length(q);',
+    '      float rad = Dp.z*0.11;',
+    '      float x = (dd - rad)/0.024;',
+    '      float en = exp(-x*x)*Dp.w*exp(-Dp.z*1.25)*smoothstep(0.0, 0.08, Dp.z);',
+    '      float w = sin((dd - rad)*300.0);',
+    '      rh += w*en*2.3;',
+    '      rip += normalize(q + 1e-5)*cos((dd - rad)*300.0)*en*2.3;',
+    '    }',
+    '  }',
     '  disp += rip*0.0030;',
     '  vec2 su = uv + disp; su.y = min(su.y, 1.0-uHorizon-0.002);',
     '  vec3 sea = texture2D(tBg, su).rgb;',
@@ -123,7 +139,7 @@
     '  vec3 c = texture2D(tColor, uv).rgb;',
     // 皮肤上的 AI 涡纹：只对低饱和的肤色区做轻微模糊，发丝保持锐利
     '  if (uSkin > 0.0) {',
-    '    vec3 cb = texture2D(tColor, uv, 1.6).rgb;',
+    '    vec3 cb = texture2D(tColor, uv, 2.2).rgb;',
     '    float skin = 1.0 - smoothstep(0.06, 0.20, c.b - c.r);',
     '    c = mix(c, cb, skin*uSkin);',
     '  }',
@@ -137,7 +153,14 @@
   var FS_PORTRAIT = [
     CUT_FN,
     'uniform float uOpacity, uTime, uWaterV; uniform vec3 uTint;',
+    'uniform sampler2D tBack; uniform vec2 uRes; uniform vec3 uHaze;',
     'varying vec2 vUv;',
+    'vec3 backBlur(vec2 s){',
+    '  vec2 r = vec2(18.0, 18.0)/uRes;',
+    '  return (texture2D(tBack, s + vec2(r.x, 0.0)).rgb + texture2D(tBack, s - vec2(r.x, 0.0)).rgb',
+    '       + texture2D(tBack, s + vec2(0.0, r.y)).rgb + texture2D(tBack, s - vec2(0.0, r.y)).rgb',
+    '       + texture2D(tBack, s + r*0.7).rgb + texture2D(tBack, s - r*0.7).rgb)/6.0;',
+    '}',
     'void main(){',
     '  vec2 uv = vUv;',
     '  float wv = uWaterV + sin(uv.x*70.0 + uTime*2.1)*0.0016 + sin(uv.x*27.0 - uTime*1.3)*0.0022;',
@@ -155,8 +178,19 @@
     '  }',
     '  float a = c.a;',
     '  a *= mix(1.0, smoothstep(0.0, 0.08, uv.x)*smoothstep(1.0, 0.88, uv.x), smoothstep(0.30, 0.0, uv.y));',
-    '  vec3 col = mix(c.rgb, uTint, 0.06);',
-    '  col = mix(col, col*vec3(1.02, 1.0, 1.04) + 0.03, 0.5);',
+    '  vec3 col = c.rgb;',
+    // 压对比、提暗部：电脑渲染感主要来自过硬的对比
+    '  col = mix(vec3(0.66, 0.64, 0.76), col, 0.86);',
+    // 朝夕阳（画面左侧）的一面偏暖，后脑一侧偏冷
+    '  float lx = smoothstep(0.80, 0.10, uv.x);',
+    '  col *= mix(vec3(0.96, 0.97, 1.04), vec3(1.06, 1.0, 0.99), lx);',
+    // 光包裹：背景的亮光漫进人物轮廓边缘
+    '  float mB = texture2D(tMask, uv, 4.5).r;',
+    '  float wrap = clamp((1.0 - mB)*1.8, 0.0, 1.0);',
+    '  vec3 bk = backBlur(gl_FragCoord.xy/uRes);',
+    '  col = mix(col, max(col, bk*1.04), wrap*0.70);',
+    // 大气：人在远处，蒙一层天空的雾色
+    '  col = mix(col, uHaze, 0.09);',
     '  float glint = 0.55 + 0.45*sin(uv.x*140.0 - uTime*3.0)*sin(uv.x*37.0 + uTime*1.7);',
     '  col += exp(-pow((uv.y - wv)/0.0022, 2.0))*0.20*glint;',
     '  gl_FragColor = vec4(col, a*uOpacity);',
@@ -249,17 +283,26 @@
 
   /* ---------- 竖纹玻璃（招牌） ---------- */
   var FS_REED = [
-    'uniform sampler2D tScene; uniform sampler2D tField;',
+    NOISE,
+    'uniform sampler2D tScene;',
     'uniform vec2 uRes; uniform vec4 uGlass;',   // x0, x1（uv）, 棱宽 px, 凸起程度
-    'uniform float uTime, uFieldOn, uFrost, uPanelA, uDistP, uDistS, uChroma;',
-    'uniform vec3 uLight;',                      // 光标光源：xy 像素，z 高度（像素）
+    'uniform float uTime, uFrost, uPanelA, uDistP, uDistS, uChroma, uCaustic;',
+    'uniform vec3 uLight;',                      // 光标灯：xy 像素，z 高度（像素）
     'uniform float uWaterPx;',                   // 玻璃板所在深度的水线（像素，自下而上）
+    'uniform float uTopPx;',                     // 玻璃板上沿（像素，自下而上；桌面版在画面外）
     'varying vec2 vUv;',
     'float dispX(vec3 n, float eta){',
     '  vec3 a = refract(vec3(0.0, 0.0, -1.0), n, 1.0/eta);',
     '  vec3 b = refract(a, vec3(0.0, 0.0, 1.0), eta);',
     '  if (dot(b, b) < 1e-4) return a.x/(-a.z)*2.2;',
     '  return b.x/(-b.z);',
+    '}',
+    'vec3 tap(vec2 uv, float dR, float dG, float dB, float dist){',
+    '  vec3 c;',
+    '  c.r = texture2D(tScene, uv + vec2(dR*dist/uRes.x, 0.0)).r;',
+    '  c.g = texture2D(tScene, uv + vec2(dG*dist/uRes.x, 0.0)).g;',
+    '  c.b = texture2D(tScene, uv + vec2(dB*dist/uRes.x, 0.0)).b;',
+    '  return c;',
     '}',
     'void main(){',
     '  vec2 uv = vUv;',
@@ -269,52 +312,63 @@
     '  float gm = smoothstep(x0 - 0.75, x0 + 0.75, P.x)*(1.0 - smoothstep(x1 - 0.75, x1 + 0.75, P.x))*uPanelA;',
     '  float under = smoothstep(uWaterPx + 0.5, uWaterPx - 1.5, P.y);',
     '  gm *= 1.0 - under*0.72;',
-    '  if (gm <= 0.0) { gl_FragColor = vec4(base.rgb, 1.0); return; }',
-    '  vec4 Fd = texture2D(tField, uv)*uFieldOn;',
-    '  float wipe = smoothstep(0.05, 0.75, Fd.r);',
-    // 棱片坐标：宽窄不一 + 光标拨动 + 竖直方向轻微的制造波纹
+    '  float topE = exp(-pow((P.y - uTopPx)/1.6, 2.0))*smoothstep(x0 - 1.0, x0 + 1.0, P.x)*(1.0 - smoothstep(x1 - 1.0, x1 + 1.0, P.x))*uPanelA;',
+    '  gm *= 1.0 - smoothstep(uTopPx - 0.75, uTopPx + 0.75, P.y);',
+    '  if (gm <= 0.0) { gl_FragColor = vec4(base.rgb + topE*0.16, 1.0); return; }',
     '  float wy = uWaterPx - P.y;',
     '  float u = (P.x - x0 + under*(sin(P.y*0.18 + uTime*2.2)*2.5 + sin(P.y*0.07 - uTime*1.3)*3.0)*(1.0 + wy*0.01))/rw;',
     '  u += 0.30*sin(u*0.37 + 1.7) + 0.16*sin(u*1.13 + 0.4);',
-    '  u += Fd.g*5.0;',
     '  float idc = floor(u);',
     '  u += sin(uv.y*7.0 + idc*1.7)*0.0045;',
     '  float id = floor(u), r = fract(u);',
+    '  float hid = hash1(id*12.9898 + 3.1);',
     '  float s = 2.0*r - 1.0;',
-    '  float A = uGlass.w*(1.0 - wipe);',     // 擦亮 = 把棱压平
+    '  float A = uGlass.w;',
     '  float q = max(1.0 - 0.93*s*s, 0.04);',
     '  vec3 n = normalize(vec3(A*0.93*s/sqrt(q), 0.0, 1.0));',
-    // 后面是人像（近）还是天空（远）决定位移量：远处扭曲更大
+    // 后面是近处（人 / 字）还是远处（天空）决定位移量
     '  float near = smoothstep(0.15, 0.85, base.a);',
     '  float dist = mix(uDistS, uDistP, near);',
     '  float ch = uChroma;',
     '  float dR = dispX(n, 1.50 - 0.030*ch), dG = dispX(n, 1.50), dB = dispX(n, 1.50 + 0.036*ch);',
-    '  vec3 col;',
-    '  col.r = texture2D(tScene, uv + vec2(dR*dist/uRes.x, 0.0)).r;',
-    '  col.g = texture2D(tScene, uv + vec2(dG*dist/uRes.x, 0.0)).g;',
-    '  col.b = texture2D(tScene, uv + vec2(dB*dist/uRes.x, 0.0)).b;',
-    // 菲涅尔：棱的侧坡更亮（反射身后的亮天空）
+    // 紧贴玻璃的近处内容（字、人）位移有上限，不会被棱边撕碎
+    '  float lim = mix(3.0, 1.1, near);',
+    '  dR = clamp(dR, -lim, lim); dG = clamp(dG, -lim, lim); dB = clamp(dB, -lim, lim);',
+    // 玻璃不是绝对透亮：竖直方向三点平均，轻微柔化
+    '  float vb = 1.6/uRes.y;',
+    '  vec3 col = (tap(uv, dR, dG, dB, dist)*2.0 + tap(uv + vec2(0.0, vb), dR, dG, dB, dist) + tap(uv - vec2(0.0, vb), dR, dG, dB, dist))*0.25;',
+    // 菲涅尔：棱的侧坡反射身后亮天空
     '  float cosi = n.z;',
     '  float F = 0.04 + 0.96*pow(1.0 - cosi, 5.0);',
-    '  vec3 envc = mix(vec3(0.90, 0.89, 0.99), vec3(1.0, 0.99, 1.0), uv.y);',
-    '  col = mix(col, envc, F*0.85);',
-    // 相邻两根棱交界的细缝：一条暗线
+    '  vec3 envc = mix(vec3(0.91, 0.89, 0.99), vec3(1.0, 0.98, 1.0), uv.y);',
+    '  col = mix(col, envc, F*0.75);',
+    // 每根棱带一点粉 / 蓝的棱镜色，越靠下（脖颈）越浓 —— 设计稿里的红蓝光
+    '  float tsel = fract(hid*13.7);',
+    '  vec3 tint = tsel < 0.30 ? vec3(1.0, 0.70, 0.80) : (tsel < 0.55 ? vec3(0.74, 0.82, 1.0) : vec3(1.0));',
+    '  float tw = (0.05 + 0.30*smoothstep(0.75, 0.15, uv.y))*(0.55 + 0.45*sin(uTime*0.35 + id*1.7));',
+    '  col = mix(col, col*tint + (1.0 - tint)*0.06, tw);',
+    // 相邻两根棱交界：很淡的柔和暗缝
     '  float edgePx = min(r, 1.0 - r)*rw;',
-    '  col *= 1.0 - 0.16*exp(-edgePx*edgePx/0.8)*(1.0 - wipe);',
-    // 高光：光标点光源（随鼠标在棱上滑动）+ 左上主光
+    '  col *= 1.0 - 0.07*exp(-edgePx*edgePx/3.0);',
+    // 高光：一团柔光而不是一根细线；每根棱亮度不同
     '  vec3 V = vec3(0.0, 0.0, 1.0);',
     '  vec3 Lc = normalize(vec3(uLight.xy - P, uLight.z));',
     '  float hc = max(dot(n, normalize(Lc + V)), 0.0);',
     '  float hk = max(dot(n, normalize(normalize(vec3(-0.42, 0.30, 0.86)) + V)), 0.0);',
-    '  col += (pow(hc, 340.0)*0.55 + pow(hc, 30.0)*0.03 + pow(hk, 160.0)*0.16)*(1.0 - wipe*0.6);',
-    // 玻璃本身极淡的冷色
+    '  float rv = 0.55 + 0.45*hash1(id*3.7 + 1.0);',
+    '  col += (pow(hc, 90.0)*0.32 + pow(hc, 14.0)*0.035)*vec3(1.0, 0.97, 0.98)*rv;',
+    '  col += pow(hk, 48.0)*0.10*rv*vec3(0.98, 0.98, 1.0);',
+    // 焦散：光标灯透过每根凸棱聚成一条亮带，落在后面的人身上；挪动鼠标，光条在脸上滑动
+    '  float sh = clamp((uLight.x - P.x)/uLight.z*0.9, -0.42, 0.42);',
+    '  float cst = exp(-pow((r - 0.5 - sh)/0.075, 2.0));',
+    '  float fall = exp(-dot(P - uLight.xy, P - uLight.xy)/(uLight.z*uLight.z*1.6));',
+    '  col += cst*fall*near*uCaustic*vec3(1.0, 0.90, 0.86)*(0.7 + 0.3*rv);',
     '  col *= vec3(0.985, 0.985, 1.0);',
-    // 玻璃板的切割边：一条亮线
-    '  col += (exp(-pow((P.x - x0)/1.3, 2.0)) + exp(-pow((P.x - x1)/1.3, 2.0)))*0.22*(1.0 - under);',
-    // 玻璃板底边插进水里：一条亮线 + 一点接触暗影
+    // 玻璃板切割边：柔和亮边
+    '  col += (exp(-pow((P.x - x0)/2.2, 2.0)) + exp(-pow((P.x - x1)/2.2, 2.0)))*0.14*(1.0 - under);',
+    // 玻璃板底边插进水里
     '  float wl = uWaterPx + sin(P.x*0.06 + uTime*2.0)*1.2 + sin(P.x*0.021 - uTime*1.2)*1.6;',
-    '  col += exp(-pow((P.y - wl)/1.2, 2.0))*0.18*(0.6 + 0.4*sin(P.x*0.13 - uTime*2.7));',
-    '  col *= 1.0 - exp(-pow((P.y - uWaterPx + 4.0)/3.0, 2.0))*0.05;',
+    '  col += exp(-pow((P.y - wl)/1.6, 2.0))*0.14*(0.6 + 0.4*sin(P.x*0.13 - uTime*2.7));',
     '  col = mix(col, vec3(0.97, 0.96, 1.0), uFrost);',
     '  gl_FragColor = vec4(mix(base.rgb, col, gm), 1.0);',
     '}'
@@ -323,23 +377,14 @@
   /* ---------- 标题字母（在竖纹 pass 里叠加） ---------- */
   var FS_TITLE = [
     'uniform sampler2D tGlyph; uniform vec4 uRect;',
-    'uniform sampler2D tScene; uniform vec2 uRes;',
-    'uniform float uSplit, uAlpha; uniform vec3 uDark; uniform vec3 uWhite;',
+    'uniform float uAlpha, uDarkK; uniform vec3 uColor;',
     'varying vec2 vUv;',
     'void main(){',
     '  vec2 g = mix(uRect.xy, uRect.zw, vUv);',
     '  float cov = texture2D(tGlyph, g).a;',
-    '  float sh = texture2D(tGlyph, g + vec2(0.0, (uRect.w - uRect.y)*0.035), 3.2).a;',
-    '  vec2 suv = gl_FragCoord.xy/uRes;',
-    '  float pa = texture2D(tScene, suv).a;',
-    '  float right = smoothstep(uSplit - 0.0015, uSplit + 0.0015, suv.x);',
-    '  vec3 dark = mix(uDark*1.35, uDark, smoothstep(0.15, 0.85, vUv.y));',
-    '  float aW = cov + (1.0 - cov)*sh*0.20;',
-    '  vec3 white = mix(vec3(0.45, 0.42, 0.66), uWhite, cov/max(aW, 1e-3));',
-    '  float aD = cov * (1.0 - smoothstep(0.35, 0.85, pa));',
-    '  vec3 c = mix(dark, white, right);',
-    '  float vis = mix(aD, aW, right) * uAlpha;',
-    '  gl_FragColor = vec4(c, vis);',
+    '  vec3 c = uDarkK > 0.5 ? mix(uColor*1.30, uColor, smoothstep(0.15, 0.85, vUv.y)) : uColor;',
+    '  float op = uDarkK > 0.5 ? 0.93 : 0.90;',
+    '  gl_FragColor = vec4(c, cov*uAlpha*op);',
     '}'
   ].join('\n');
 
@@ -548,7 +593,7 @@
   var FS_BRIGHT = [
     'uniform sampler2D tSrc; uniform float uThr; varying vec2 vUv;',
     'void main(){ vec3 c = texture2D(tSrc, vUv).rgb; float l = max(max(c.r, c.g), c.b);',
-    '  gl_FragColor = vec4(c * smoothstep(uThr, uThr + 0.12, l), 1.0); }'
+    '  gl_FragColor = vec4(c * smoothstep(uThr, uThr + 0.22, l), 1.0); }'
   ].join('\n');
 
   var FS_BLUR = [
@@ -565,66 +610,42 @@
     NOISE,
     'uniform sampler2D tColor; uniform sampler2D tBloom; uniform sampler2D tDesign;',
     'uniform vec2 uRes; uniform float uTime;',
-    'uniform vec3 uLens; uniform vec2 uLensV; uniform float uLensA;',
-    'uniform vec4 uShock;',   // x, y(px), 年龄 s, 强度
     'uniform float uWhite, uBurst, uBloom, uGrain, uDbg, uCA; uniform vec4 uFrame;',
     'varying vec2 vUv;',
-    'vec2 lensOff(vec3 n, float eta){',
-    '  vec3 a = refract(vec3(0.0, 0.0, -1.0), n, 1.0/eta);',
-    '  vec3 b = refract(a, vec3(0.0, 0.0, 1.0), eta);',
-    '  if (dot(b, b) < 1e-4) return a.xy/(-a.z);',
-    '  return b.xy/(-b.z);',
-    '}',
     'void main(){',
     '  vec2 uv = vUv; vec2 p = uv*uRes;',
-    '  vec2 o = vec2(0.0); float chrom = 0.0;',
-    // 点击冲击波
-    '  if (uShock.w > 0.0) {',
-    '    float age = uShock.z; float rad = age*uRes.y*1.25;',
-    '    vec2 dv = p - uShock.xy; float d = length(dv);',
-    '    float ring = exp(-pow((d - rad)/(uRes.y*0.045), 2.0)) * uShock.w * exp(-age*1.6);',
-    '    o += dv/max(d, 1.0) * ring * uRes.y*0.022;',
-    '    chrom += ring*1.2;',
-    '  }',
-    // 光标玻璃水滴：平凸透镜，按折射算放大 + 三通道色散 + 菲涅尔 + 两处高光
-    '  vec2 d = p - uLens.xy;',
-    '  float sp = length(uLensV); vec2 vd = sp > 1.0 ? uLensV/sp : vec2(1.0, 0.0);',
-    '  float st = clamp(sp/2600.0, 0.0, 0.5);',
-    '  vec2 dl = vec2(dot(d, vd)/(1.0 + st), dot(d, vec2(-vd.y, vd.x))*(1.0 + st*0.45));',
-    '  float r = length(dl)/max(uLens.z, 1.0);',
-    '  float inL = (1.0 - smoothstep(0.975, 1.0, r))*uLensA;',
-    '  vec2 q = uv + o/uRes;',
-    '  float ca = 0.004*chrom + uCA;',
+    // 镜头：越靠画面边缘色散越明显（真实镜头的横向色差）
+    '  vec2 cc = uv - 0.5;',
+    '  float ca = 0.0005 + dot(cc, cc)*0.0035 + uCA;',
     '  vec3 col;',
-    '  col.r = texture2D(tColor, q + (q-0.5)*ca).r;',
-    '  col.g = texture2D(tColor, q).g;',
-    '  col.b = texture2D(tColor, q - (q-0.5)*ca).b;',
-    '  if (inL > 0.0) {',
-    '    vec2 dd = (d/max(uLens.z, 1.0))*min(1.0, 0.999/max(r, 1e-3));',
-    '    float zz = sqrt(max(1.0 - dot(dd, dd), 0.0));',
-    '    vec3 n = normalize(vec3(dd*0.92, zz));',
-    '    float dep = uLens.z*1.6;',
-    '    vec2 oR = lensOff(n, 1.325)*dep, oG = lensOff(n, 1.34)*dep, oB = lensOff(n, 1.36)*dep;',
-    '    vec3 lc = vec3(texture2D(tColor, (p + oR)/uRes).r, texture2D(tColor, (p + oG)/uRes).g, texture2D(tColor, (p + oB)/uRes).b);',
-    '    float Fl = 0.02 + 0.98*pow(1.0 - n.z, 5.0);',
-    '    lc = mix(lc, vec3(0.97, 0.97, 1.0), Fl*0.85);',
-    '    lc += pow(max(dot(n, normalize(vec3(-0.30, 0.42, 0.86))), 0.0), 260.0)*1.3;',
-    '    lc += pow(max(dot(n, normalize(vec3(0.40, -0.42, 0.82))), 0.0), 70.0)*0.16;',
-    '    col = mix(col, lc, inL);',
-    '  }',
-    '  col *= 1.0 - 0.07*exp(-pow((r - 1.04)/0.05, 2.0))*uLensA;',
-    '  col += texture2D(tBloom, uv).rgb * uBloom;',
+    '  col.r = texture2D(tColor, uv + cc*ca).r;',
+    '  col.g = texture2D(tColor, uv).g;',
+    '  col.b = texture2D(tColor, uv - cc*ca).b;',
+    // 去掉电脑渲染的锐利感：与极轻的模糊混合
+    '  vec2 px = 0.75/uRes;',
+    '  vec3 soft = (texture2D(tColor, uv + vec2(px.x, px.y)).rgb + texture2D(tColor, uv + vec2(-px.x, px.y)).rgb',
+    '             + texture2D(tColor, uv + vec2(px.x, -px.y)).rgb + texture2D(tColor, uv - px).rgb)*0.25;',
+    '  col = mix(col, soft, 0.30);',
+    // 光晕（halation）：亮处向外渗出带粉的光
+    '  vec3 bl = texture2D(tBloom, uv).rgb*uBloom*vec3(1.0, 0.92, 0.97);',
+    '  col = 1.0 - (1.0 - col)*(1.0 - min(bl, vec3(1.0)));',      // 滤色叠加，白不会溢出
+    // 胶片影调：高光单调柔和地趋近 1（不能用会倒过来的曲线）
+    '  vec3 hi = max(col - 0.82, 0.0);',
+    '  col = min(col, vec3(0.82)) + 0.18*(1.0 - exp(-hi/0.18));',
     '  float lm = dot(col, vec3(0.299, 0.587, 0.114));',
-    '  col = mix(vec3(lm), col, 1.12);',
-    '  col = (col - 0.62)*1.05 + 0.62;',
-    '  col += vec3(1.0, 0.97, 1.0) * uBurst;',
-    '  vec2 vg = uv - 0.5; col *= 1.0 - dot(vg, vg)*0.16;',
+    '  col = mix(col, col*vec3(0.95, 0.95, 1.05) + vec3(0.03, 0.02, 0.06), (1.0 - lm)*0.5);',
+    '  col = mix(col, col*vec3(1.025, 0.995, 0.985), smoothstep(0.5, 1.0, lm));',
+    '  col = mix(vec3(lm), col, 1.02);',
+    '  col += vec3(1.0, 0.97, 1.0)*uBurst;',
+    '  col *= 1.0 - dot(cc, cc)*0.20;',
     '  col = mix(col, vec3(0.99, 0.985, 1.0), uWhite);',
     '  if (uDbg > 0.0) {',
     '    vec2 fu = (vec2(p.x, uRes.y - p.y) - uFrame.xy)/uFrame.zw;',
     '    if (fu.x > 0.0 && fu.x < 1.0 && fu.y > 0.0 && fu.y < 1.0) col = mix(col, texture2D(tDesign, vec2(fu.x, 1.0 - fu.y)).rgb, uDbg);',
     '  }',
-    '  col += (hash2(p + fract(uTime)*137.0) - 0.5) * uGrain;',
+    // 颗粒：暗部稍多、亮部稍少，像胶片
+    '  float gr = hash2(p + fract(uTime*7.0)*137.0) - 0.5;',
+    '  col += gr*uGrain*(1.2 - lm*0.6);',
     '  gl_FragColor = vec4(col, 1.0);',
     '}'
   ].join('\n');
