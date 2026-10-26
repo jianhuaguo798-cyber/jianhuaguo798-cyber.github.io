@@ -116,9 +116,9 @@
   Stage.prototype.load = function (base, onProgress) {
     var self = this;
     var list = [
-      ['bg', 'bg.webp'], ['portrait', 'portrait.webp'], ['portraitMask', 'portrait-mask.png'],
-      ['lav', 'lavender.webp'], ['lavMask', 'lavender-mask.png'],
-      ['fly', 'butterfly.webp'], ['flyMask', 'butterfly-mask.png']
+      ['bg', 'bg.webp'], ['portrait', 'portrait.webp'], ['portraitMask', 'portrait-mask.webp'],
+      ['lav', 'lavender.webp'], ['lavMask', 'lavender-mask.webp'],
+      ['fly', 'butterfly.webp'], ['flyMask', 'butterfly-mask.webp']
     ];
     if (this.opts.debug) list.push(['design', 'design.webp']);
     var loader = new THREE.TextureLoader();

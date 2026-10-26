@@ -18,14 +18,17 @@ class H(http.server.SimpleHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         if u.path != '/__shot':
             self.send_error(404); return
-        name = urllib.parse.parse_qs(u.query).get('name', ['shot'])[0]
+        qs = urllib.parse.parse_qs(u.query)
+        name = qs.get('name', ['shot'])[0]
         name = ''.join(ch for ch in name if ch.isalnum() or ch in '-_') or 'shot'
+        ext = qs.get('ext', ['png'])[0]
+        ext = ext if ext in ('png', 'webp', 'jpg') else 'png'
         n = int(self.headers.get('Content-Length', 0))
         data = self.rfile.read(n).decode()
         if ',' in data:
             data = data.split(',', 1)[1]
         os.makedirs(SHOTS, exist_ok=True)
-        with open(os.path.join(SHOTS, name + '.png'), 'wb') as f:
+        with open(os.path.join(SHOTS, name + '.' + ext), 'wb') as f:
             f.write(base64.b64decode(data))
         self.send_response(200); self.end_headers(); self.wfile.write(b'ok')
 

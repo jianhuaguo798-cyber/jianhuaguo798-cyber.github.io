@@ -143,10 +143,11 @@
     '    float skin = 1.0 - smoothstep(0.06, 0.20, c.b - c.r);',
     '    c = mix(c, cb, skin*uSkin);',
     '  }',
-    '  float m = texture2D(tMask, uv).r;',
-    '  float a = smoothstep(0.16, 0.88, m);',
-    '  vec3 f = clamp((c - (1.0 - a)) / max(a, 0.6), 0.0, 1.0);',   // 轻度去白边
-    '  return vec4(mix(c, f, 0.55), a);',
+    // 蒙版 = 素材原本的透明通道；彩色图透明处已填成淡紫 BG，这里把边缘的 BG 成分去掉
+    '  float a = smoothstep(0.03, 0.97, texture2D(tMask, uv).r);',
+    '  vec3 BG = vec3(0.863, 0.855, 0.941);',
+    '  vec3 f = clamp((c - (1.0 - a)*BG) / max(a, 0.35), 0.0, 1.0);',
+    '  return vec4(f, a);',
     '}'
   ].join('\n');
 
