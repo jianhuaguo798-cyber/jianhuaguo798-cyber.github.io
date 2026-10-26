@@ -12,20 +12,23 @@
 <meta property="og:url" content="https://jianhuaguo798-cyber.github.io/">
 <meta property="og:image" content="https://jianhuaguo798-cyber.github.io/assets/img/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="assets/img/poster-desk.webp" as="image" media="(min-aspect-ratio: 41/50)" fetchpriority="high">
+<link rel="preload" href="assets/img/poster-mob.webp" as="image" media="(max-aspect-ratio: 41/50)" fetchpriority="high">
 <link rel="preload" href="assets/fonts/montserrat-800.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/img/portrait.webp" as="image" crossorigin="anonymous">
-<link rel="preload" href="assets/img/bg.webp" as="image" crossorigin="anonymous">
-<link rel="preload" href="assets/img/portrait-mask.webp" as="image" crossorigin="anonymous">
-<link rel="preload" href="assets/img/lavender.webp" as="image" crossorigin="anonymous">
-<link rel="preload" href="assets/img/lavender-mask.webp" as="image" crossorigin="anonymous">
-<link rel="preload" href="assets/img/butterfly.webp" as="image" crossorigin="anonymous">
-<link rel="preload" href="assets/img/butterfly-mask.webp" as="image" crossorigin="anonymous">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="is-loading">
 
 <canvas id="gl" aria-hidden="true"></canvas>
+
+<!-- 首屏静态画面：网速慢时先显示它（约 60KB），动效资源在后台下载好后无缝淡入 -->
+<div class="poster" id="poster" aria-hidden="true">
+  <picture>
+    <source media="(max-aspect-ratio: 41/50)" srcset="assets/img/poster-mob.webp">
+    <img id="posterImg" src="assets/img/poster-desk.webp" alt="" fetchpriority="high" decoding="async">
+  </picture>
+</div>
 
 <!-- 加载层 -->
 <div class="loader" id="loader" aria-hidden="true">

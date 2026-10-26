@@ -7,7 +7,8 @@
     dbg: qs.has('dbg') ? parseFloat(qs.get('dbg')) || 0.5 : 0, // 叠加设计稿对位
     low: qs.has('low'),
     mx: qs.has('mx') ? parseFloat(qs.get('mx')) : null,     // 模拟光标位置（0~1）
-    my: qs.has('my') ? parseFloat(qs.get('my')) : null
+    my: qs.has('my') ? parseFloat(qs.get('my')) : null,
+    slow: qs.has('slow') ? parseFloat(qs.get('slow')) || 0 : 0          // 模拟慢网络：动效资源推迟 N 毫秒就绪
   };
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var finePointer = window.matchMedia && matchMedia('(pointer: fine)').matches;
@@ -209,20 +210,46 @@
   var started = false, introStart = 0;
   var clock = { t: 0, last: performance.now() };
 
+  // 首屏静态画面：1.6 秒内动效没准备好，就先显示静态首页（文字是真实网页文字），不让人干等
+  var poster = $('#poster'), posterImg = $('#posterImg'), posterOn = false;
+  function showPoster() {
+    if (started || posterOn) return;
+    posterOn = true;
+    poster.classList.add('is-on');
+    $('#loader').classList.add('is-done');
+    body.classList.remove('is-loading');
+    if (lenis) lenis.start();
+  }
+  if (Q.at === null && Q.p === null) setTimeout(function () {
+    if (started) return;
+    if (posterImg.complete && posterImg.naturalWidth) showPoster();
+    else posterImg.addEventListener('load', showPoster, { once: true });
+  }, 1600);
+
   function start() {
     started = true;
     introStart = clock.t;
     $('#loader').classList.add('is-done');
     if (Q.at !== null) $('#loader').style.display = 'none';
     body.classList.remove('is-loading');
+    if (body.classList.contains('no-gl')) { poster.classList.add('is-on'); posterOn = true; }
+  }
 
+  // 静态首页已经在显示：动效准备好后跳过开场，直接以「定格后」的状态淡入，画面不跳
+  function startSettled() {
+    started = true;
+    introStart = clock.t - 8;
+    stage.update(Object.assign({}, S, { T: 8, t: clock.t, dt: 1 / 60, p: scrollP() }));
+    stage.render();
+    requestAnimationFrame(function () { poster.classList.remove('is-on'); });
   }
 
   if (stage) {
     stage.resize(W, H, L);
     Promise.all([
       stage.load('assets/img/', function (k) { setProgress(k * 0.85); }),
-      fontsReady.then(function () { setProgress(Math.max(target, 0.2)); })
+      fontsReady.then(function () { setProgress(Math.max(target, 0.2)); }),
+      new Promise(function (r) { setTimeout(r, Q.slow); })
     ]).then(function () {
       stage.build();
       stage.resize(W, H, L);
@@ -231,11 +258,12 @@
       // 预热一帧，避免开场卡顿
       stage.update(Object.assign({}, S, { T: 0, t: 0 }));
       stage.render();
-      setTimeout(start, 380);
+      if (posterOn) startSettled();
+      else setTimeout(function () { if (posterOn) startSettled(); else start(); }, 380);
     }).catch(function (err) {
       console.error(err);
       body.classList.add('no-gl');
-      start();
+      if (!posterOn) start(); else started = true;
     });
   } else {
     setProgress(1); setTimeout(start, 300);
@@ -265,7 +293,14 @@
       loaderNum.textContent = Math.round(shown * 100);
       loaderBar.style.transform = 'scaleX(' + shown.toFixed(4) + ')';
     }
-    if (!started) { if (stage && stage.ready) { stage.update(Object.assign({}, S, { T: 0, t: clock.t, dt: dt })); stage.render(); } return; }
+    if (!started) {
+      if (posterOn) {
+        // 静态首页阶段：文字、线条直接是定格状态，可以正常滚动
+        if (lenis) lenis.raf(clock.t * 1000);
+        tickDom(20, clock.t, scrollP());
+      } else if (stage && stage.ready) { stage.update(Object.assign({}, S, { T: 0, t: clock.t, dt: dt })); stage.render(); }
+      return;
+    }
 
     var T = clock.t - introStart;
     if (reduced) T = 20;
