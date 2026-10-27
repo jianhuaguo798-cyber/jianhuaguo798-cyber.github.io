@@ -12,8 +12,8 @@
 <meta property="og:url" content="https://jianhuaguo798-cyber.github.io/">
 <meta property="og:image" content="https://jianhuaguo798-cyber.github.io/assets/img/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="assets/img/poster-desk.webp" as="image" media="(min-aspect-ratio: 41/50)" fetchpriority="high">
-<link rel="preload" href="assets/img/poster-mob.webp" as="image" media="(max-aspect-ratio: 41/50)" fetchpriority="high">
+<link rel="preload" as="image" imagesrcset="assets/img/poster-desk-1440.webp 1440w, assets/img/poster-desk-2560.webp 2560w" imagesizes="100vw" media="(min-aspect-ratio: 41/50)" fetchpriority="high">
+<link rel="preload" as="image" imagesrcset="assets/img/poster-mob-750.webp 750w, assets/img/poster-mob-1125.webp 1125w" imagesizes="100vw" media="(max-aspect-ratio: 41/50)" fetchpriority="high">
 <link rel="preload" href="assets/fonts/montserrat-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/style.css">
@@ -23,10 +23,10 @@
 <canvas id="gl" aria-hidden="true"></canvas>
 
 <!-- 首屏静态画面：网速慢时先显示它（约 60KB），动效资源在后台下载好后无缝淡入 -->
-<div class="poster" id="poster" aria-hidden="true">
+<div class="poster" id="poster" aria-hidden="true" style="--lqip-d:url(data:image/webp;base64,UklGRhADAABXRUJQVlA4WAoAAAAgAAAAHwAAEQAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZWUDggIgEAAPAGAJ0BKiAAEgA+tUqbSickIiGwGAwA4BaJYwCdM1hP/FMw89PRI+SlYJN53N8VfEVLsRVBfcWJBnRUcxSU5ngA/vOvqJYbTbPn8ZKw9nqO2GtRdC+W5FXEYe2N/GnFyABKLtPYp+LQduXAY3zpHcf+oLfUPXDVH2GH0xOEVP9+P14IXf4o2NmGIrT3J0+ZX54/nr/96IbJd1L963IZixc0WTcJh2X9EiEDeG6jSTKegf6/hmMH1qdhV8+HJTLUuJZFDYvW3hgrE/dbet78C0NoC4PR3RYbUAadMhzg7NkGRBmNe95rBh2RZz6GU2RAea/45rZtHF/z6ZpswyhRSR1AV4M66Qq0mNsCws28bqHdviNEdlaQy2pgmvayKNiTMewA);--lqip-m:url(data:image/webp;base64,UklGRjQDAABXRUJQVlA4WAoAAAAgAAAAEQAAIwAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZWUDggRgEAAPAHAJ0BKhIAJAA+tVCeTKckoqIquAoA4BaJYgCsMvB3ZBdjAVN5mAfqAPVwE00ulypbt4SvPqexVFEb6NYeig6JvnQfJ/iv5AD+9NZbqWXeJgg+ehTWiOcLQrOGUy12v8Byd+2pYW9I4q5ndcTzf/5J7u0xe+PkwRpWPEvViLbS/dDIXDzZqnLqa5PQN9dtw/2kFpJV9tYK+f8Ayhq/w6cHKqeaZNFIdbwHUY998+bdCYzyF8YPLuKgH4JfI0FoA7slmrwPXttucCXINOwECfu+NKUKEDWpNjRHEtwAe+mXqgUwDzmRy7UiwJrjKuXxSZFEN7h4zFmeZgwOw1FBjHdxaTsRvDYqWV2ZfXhgjY+JkMLotzZ1SM3z7Y0PECpnG9AvuiiQV+vj+hRXjmj2hDBk2nRUl+7il6XCpAAbNYBFVm7YAAAA)">
   <picture>
-    <source media="(max-aspect-ratio: 41/50)" srcset="assets/img/poster-mob.webp">
-    <img id="posterImg" src="assets/img/poster-desk.webp" alt="" fetchpriority="high" decoding="async">
+    <source media="(max-aspect-ratio: 41/50)" srcset="assets/img/poster-mob-750.webp 750w, assets/img/poster-mob-1125.webp 1125w" sizes="100vw">
+    <img id="posterImg" src="assets/img/poster-desk-1440.webp" srcset="assets/img/poster-desk-1440.webp 1440w, assets/img/poster-desk-2560.webp 2560w" sizes="100vw" alt="" fetchpriority="high" decoding="async">
   </picture>
 </div>
 

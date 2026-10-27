@@ -95,7 +95,9 @@
     r.setClearColor(0xe4e6f8, 1);
     this.gl2 = r.capabilities.isWebGL2;
     this.maxTex = r.capabilities.maxTextureSize;
-    this.budget = opts.lowPower ? 1.6e6 : 3.4e6;   // 渲染像素预算
+    // 渲染像素预算：以清晰为先——电脑按屏幕原生清晰度（4K 屏 = 4K），手机支持到 3 倍屏；帧率不够时自动降一档
+    this.budget = opts.dprMax ? 4e7 : (opts.lowPower ? 3.4e6 : 9.0e6);
+    this.dprMax = opts.dprMax || (opts.lowPower ? 3 : 2);
     this.cam = new THREE.PerspectiveCamera(FOV, 1, 0.05, 400);
     this.ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.quadGeo = new THREE.PlaneGeometry(2, 2);
@@ -123,14 +125,21 @@
     if (this.opts.debug) list.push(['design', 'design.webp']);
     var loader = new THREE.TextureLoader();
     var done = 0;
+    // 慢网络 / 手机网络偶尔会断：每张图失败后自动重试，最多 3 次
     return Promise.all(list.map(function (it) {
       return new Promise(function (res, rej) {
-        loader.load(base + it[1], function (tx) {
-          tx.anisotropy = Math.min(4, self.renderer.capabilities.getMaxAnisotropy());
-          self.tex[it[0]] = tx;
-          done++; onProgress && onProgress(done / list.length);
-          res();
-        }, undefined, function () { rej(new Error('load ' + it[1])); });
+        var tries = 0;
+        (function attempt() {
+          loader.load(base + it[1] + (tries ? '?retry=' + tries : ''), function (tx) {
+            tx.anisotropy = Math.min(8, self.renderer.capabilities.getMaxAnisotropy());
+            self.tex[it[0]] = tx;
+            done++; onProgress && onProgress(done / list.length);
+            res();
+          }, undefined, function () {
+            if (++tries <= 3) setTimeout(attempt, 600 * tries);
+            else rej(new Error('load ' + it[1]));
+          });
+        })();
       });
     }));
   };
@@ -138,14 +147,16 @@
   /* ---------- 构建场景 ---------- */
   Stage.prototype.build = function () {
     var self = this, tx = this.tex;
+    this.LY = this.LY || LAYOUTS[this.L.mode] || LAYOUTS.desk;
     var halfF = THREE.HalfFloatType;
 
     // 渲染目标
     var rtOpt = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false };
-    this.rtA = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, this.gl2 ? { samples: 4 } : {}));
-    this.rtScene = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, this.gl2 ? { samples: 4 } : {}));
+    var msaa = this.gl2 && this.dpr < 1.75 ? { samples: 4 } : {};
+    this.rtA = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, msaa));
+    this.rtScene = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, msaa));
     this.rtReed = new THREE.WebGLRenderTarget(4, 4, rtOpt);
-    this.rtFg = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, { depthBuffer: true }, this.gl2 ? { samples: 4 } : {}));
+    this.rtFg = new THREE.WebGLRenderTarget(4, 4, Object.assign({}, rtOpt, { depthBuffer: true }, msaa));
     this.rtBloomA = new THREE.WebGLRenderTarget(4, 4, rtOpt);
     this.rtBloomB = new THREE.WebGLRenderTarget(4, 4, rtOpt);
     // 交互场需要能渲染到半浮点纹理（部分 iOS 只有 half_float 扩展），都没有就关掉擦亮效果
@@ -203,7 +214,7 @@
     this.sMain.add(this.ring);
 
     this.mPortrait = mat({ fs: SH.FS_PORTRAIT, blend: CUSTOM_COVER, uniforms: {
-      tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.75 },
+      tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.85 }, uTexel: { value: new THREE.Vector2(1 / 1175, 1 / 1339) },
       uOpacity: { value: 0 }, uTime: { value: 0 }, uTint: { value: new THREE.Vector3(0.90, 0.88, 0.99) }, uWaterV: { value: 0.12 },
       tBack: { value: this.rtA.texture }, uRes: { value: new THREE.Vector2(2, 2) }, uHaze: { value: new THREE.Vector3(0.88, 0.90, 1.0) }
     } });
@@ -248,7 +259,7 @@
     });
     this.sPrism.add(this.portrait);
     this.mPRefl = mat({ fs: SH.FS_PREFL, blend: CUSTOM_KEEPA, uniforms: {
-      tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.75 },
+      tColor: { value: tx.portrait }, tMask: { value: tx.portraitMask }, uKeyR: { value: 0.011 }, uSkin: { value: 0.0 }, uTexel: { value: new THREE.Vector2(1 / 1175, 1 / 1339) },
       uOpacity: { value: 0 }, uTime: { value: 0 }, uWaterV: { value: 0.12 }
     } });
     this.pRefl = new THREE.Mesh(this.portrait.geometry, this.mPRefl);
@@ -341,7 +352,7 @@
       uLens: { value: new THREE.Vector3(-999, -999, 20) }, uLensV: { value: new THREE.Vector2() }, uLensA: { value: 0 },
       uShock: { value: new THREE.Vector4(0, 0, 9, 0) },
       uWhite: { value: 1 }, uBurst: { value: 0 }, uCA: { value: 0 }, uBloom: { value: 0.35 }, uGrain: { value: 0.018 },
-      uWB: { value: new THREE.Vector3(0.975, 1.0, 1.045) }, uExpo: { value: 1.04 }, uVib: { value: 0.35 }, uClarity: { value: 0.55 }, uGradeOn: { value: 1 },
+      uWB: { value: new THREE.Vector3(0.975, 1.0, 1.045) }, uExpo: { value: 1.04 }, uVib: { value: 0.35 }, uClarity: { value: 0.28 }, uGradeOn: { value: 1 },
       uDbg: { value: this.opts.debug || 0 }, uFrame: { value: new THREE.Vector4() }
     } });
     this.sPost = quadScene(this.mPost);
@@ -458,9 +469,9 @@
   Stage.prototype.resize = function (W, H, L) {
     if (!(W > 2 && H > 2)) return;              // 隐藏面板 / 折叠窗口时宽高可能为 0
     this.W = W; this.H = H; this.L = L;
-    var base = Math.min(window.devicePixelRatio || 1, 2);
+    var base = this.opts.dprMax ? this.opts.dprMax : Math.min(window.devicePixelRatio || 1, this.dprMax);
     var dpr = Math.min(base, Math.sqrt(this.budget / (W * H)));
-    this.dpr = Math.max(0.6, dpr);
+    this.dpr = Math.max(1, dpr);
     var rw = Math.round(W * this.dpr), rh = Math.round(H * this.dpr);
     this.rw = rw; this.rh = rh;
     this.renderer.setPixelRatio(1);
@@ -495,6 +506,7 @@
 
   Stage.prototype.layoutObjects = function () {
     if (!this.ready) return;
+    this.laidOut = true;
     var W = this.W, H = this.H, L = this.L, self = this, LY = this.LY || LAYOUTS.desk;
     // 背景：按地平线对齐 + 覆盖视口 + 视差余量
     var D = 60, mg = 0.06;
@@ -607,7 +619,7 @@
 
   /* ---------- 每帧状态 ---------- */
   Stage.prototype.update = function (S) {
-    if (!this.ready) return;
+    if (!this.ready || !this.LY || !this.laidOut) return;
     var t = S.t, dt = S.dt, T = S.T, p = S.p, self = this, sm = this.sm;
     this.t = t;
     var W = this.W, H = this.H, dpr = this.dpr;
@@ -875,8 +887,8 @@
     this.perf.acc += dt; this.perf.n++;
     if (this.perf.acc > 2.5) {
       var avg = this.perf.acc / this.perf.n;
-      if (avg > 1 / 42 && this.perf.steps < 3 && T > 4) {
-        this.perf.steps++; this.budget *= 0.66;
+      if (avg > 1 / 40 && this.perf.steps < 4 && T > 4 && this.dpr > 1.01) {
+        this.perf.steps++; this.budget *= 0.72;
         this.resize(this.W, this.H, this.L);
       }
       this.perf.acc = 0; this.perf.n = 0;

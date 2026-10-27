@@ -134,14 +134,25 @@
 
   /* ---------- 抠图层（人像 / 薰衣草 / 蝴蝶共用片元） ---------- */
   var CUT_FN = [
-    'uniform sampler2D tColor; uniform sampler2D tMask; uniform float uKeyR; uniform float uSkin;',
+    'uniform sampler2D tColor; uniform sampler2D tMask; uniform float uKeyR; uniform float uSkin; uniform vec2 uTexel;',
     'vec4 cutout(vec2 uv){',
     '  vec3 c = texture2D(tColor, uv).rgb;',
-    // 皮肤上的 AI 涡纹：只对低饱和的肤色区做轻微模糊，发丝保持锐利
+    // 保边磨皮（双边滤波）：只抹平皮肤上低反差的 AI 涡纹，眼睛、睫毛、嘴唇等高反差边缘保持锐利
     '  if (uSkin > 0.0) {',
-    '    vec3 cb = texture2D(tColor, uv, 2.2).rgb;',
-    '    float skin = 1.0 - smoothstep(0.06, 0.20, c.b - c.r);',
-    '    c = mix(c, cb, skin*uSkin);',
+    '    vec3 acc = c; float ws = 1.0;',
+    '    for (int i = 0; i < 12; i++) {',
+    '      float fi = float(i);',
+    '      float ang = fi*0.5236 + (mod(fi, 2.0) > 0.5 ? 0.26 : 0.0);',
+    '      float rad = fi < 6.0 ? 2.6 : 5.2;',
+    '      vec3 ci = texture2D(tColor, uv + vec2(cos(ang), sin(ang))*uTexel*rad).rgb;',
+    '      vec3 dc = ci - c;',
+    '      float w = exp(-dot(dc, dc)*55.0)*(fi < 6.0 ? 1.0 : 0.8);',
+    '      acc += ci*w; ws += w;',
+    '    }',
+    '    float lum = dot(c, vec3(0.299, 0.587, 0.114));',
+    '    float sat = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b)))/max(max(c.r, max(c.g, c.b)), 1e-3);',
+    '    float skin = smoothstep(0.42, 0.58, lum)*(1.0 - smoothstep(0.20, 0.34, sat));',   // 亮而不艳 = 皮肤；头发偏暗偏蓝、眼睛睫毛偏暗都会被排除
+    '    c = mix(c, acc/ws, skin*uSkin);',
     '  }',
     // 蒙版 = 素材原本的透明通道；彩色图透明处已填成淡紫 BG，这里把边缘的 BG 成分去掉
     '  float a = smoothstep(0.03, 0.97, texture2D(tMask, uv).r);',

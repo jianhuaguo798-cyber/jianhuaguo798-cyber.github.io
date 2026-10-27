@@ -46,8 +46,11 @@ body.is-loading { overflow: hidden; }
 .poster { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity .9s cubic-bezier(.3,.7,.2,1), visibility 0s linear .9s; background: #e4e6f8; }
 .poster.is-on { opacity: 1; visibility: visible; transition: opacity .6s ease; }
 /* 非 16:9 屏幕的上下 / 左右留边：用同一张图模糊铺满，不多下载 */
-.poster::before { content: ""; position: absolute; inset: -6%; background: url(../img/poster-desk.webp) center / cover no-repeat; filter: blur(28px) saturate(1.05); }
-.is-mob .poster::before { background-image: url(../img/poster-mob.webp); }
+/* 模糊预览（内嵌在网页里，打开瞬间就有）→ 高清首屏图加载好后淡入 */
+.poster::before { content: ""; position: absolute; inset: -6%; background: var(--lqip-d) center / cover no-repeat; filter: blur(22px) saturate(1.05); }
+.is-mob .poster::before { background-image: var(--lqip-m); }
+.poster img { opacity: 0; transition: opacity .7s ease; }
+.poster img.is-loaded { opacity: 1; }
 .poster img { position: absolute; left: var(--ox); top: var(--oy); width: calc(2000 * var(--u)); height: calc(1125 * var(--u)); max-width: none;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1.5%, #000 98.5%, transparent 100%), linear-gradient(180deg, transparent 0, #000 1.5%, #000 98.5%, transparent 100%);
   -webkit-mask-composite: source-in; mask-composite: intersect; }

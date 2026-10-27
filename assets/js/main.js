@@ -8,7 +8,8 @@
     low: qs.has('low'),
     mx: qs.has('mx') ? parseFloat(qs.get('mx')) : null,     // 模拟光标位置（0~1）
     my: qs.has('my') ? parseFloat(qs.get('my')) : null,
-    slow: qs.has('slow') ? parseFloat(qs.get('slow')) || 0 : 0          // 模拟慢网络：动效资源推迟 N 毫秒就绪
+    slow: qs.has('slow') ? parseFloat(qs.get('slow')) || 0 : 0,         // 模拟慢网络：动效资源推迟 N 毫秒就绪
+    dpr: qs.has('dpr') ? parseFloat(qs.get('dpr')) : 0                  // 强制渲染倍率（导出高清首屏图用）
   };
   var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var finePointer = window.matchMedia && matchMedia('(pointer: fine)').matches;
@@ -193,7 +194,7 @@
   if (location.protocol === 'file:') { body.classList.add('no-gl'); console.warn('请用 python3 tools/serve.py 预览，file:// 下 WebGL 贴图会被浏览器拦截'); }
   else try {
     var weak = L.mode === 'mob' || (navigator.hardwareConcurrency || 8) <= 4;
-    stage = new window.Stage(canvas, { debug: Q.dbg, lowPower: Q.low || weak });
+    stage = new window.Stage(canvas, { debug: Q.dbg, lowPower: Q.low || weak, dprMax: Q.dpr || 0 });
   } catch (err) {
     console.error(err);
     body.classList.add('no-gl');
@@ -220,11 +221,10 @@
     body.classList.remove('is-loading');
     if (lenis) lenis.start();
   }
-  if (Q.at === null && Q.p === null) setTimeout(function () {
-    if (started) return;
-    if (posterImg.complete && posterImg.naturalWidth) showPoster();
-    else posterImg.addEventListener('load', showPoster, { once: true });
-  }, 1600);
+  function posterLoaded() { posterImg.classList.add('is-loaded'); }
+  if (posterImg.complete && posterImg.naturalWidth) posterLoaded(); else posterImg.addEventListener('load', posterLoaded, { once: true });
+  // 先显示内嵌的模糊预览 + 真实文字，高清首屏图到了自动变清晰
+  if (Q.at === null && Q.p === null) setTimeout(function () { if (!started) showPoster(); }, 1600);
 
   function start() {
     started = true;
